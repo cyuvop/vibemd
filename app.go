@@ -13,20 +13,33 @@ import (
 
 // App holds runtime state and is bound to the Wails frontend.
 type App struct {
-	ctx         context.Context
-	filePath    string
-	watchCancel context.CancelFunc
+	ctx          context.Context
+	filePath     string
+	watchCancel  context.CancelFunc
+	pendingRender map[string]interface{} // set during startup before frontend is ready
 }
 
 func NewApp() *App { return &App{} }
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	// Use a sentinel so emitRender knows the frontend isn't ready yet.
+	// Ready() clears this and flushes the cached payload.
+	a.pendingRender = map[string]interface{}{}
 	for _, arg := range os.Args[1:] {
 		if arg != "--mcp" && !strings.HasPrefix(arg, "-") {
 			_ = a.OpenFile(arg)
 			return
 		}
+	}
+}
+
+// Ready is called by the frontend once its event listeners are registered.
+// It flushes any render that happened during startup before JS was ready.
+func (a *App) Ready() {
+	if a.pendingRender != nil {
+		runtime.EventsEmit(a.ctx, "markdown:rendered", a.pendingRender)
+		a.pendingRender = nil
 	}
 }
 
@@ -70,13 +83,19 @@ func (a *App) OpenFile(path string) error {
 
 func (a *App) emitRender(path string, data []byte) {
 	html := renderer.RenderMarkdown(string(data))
-	wordCount := len(strings.Fields(string(data)))
-	runtime.EventsEmit(a.ctx, "markdown:rendered", map[string]interface{}{
+	payload := map[string]interface{}{
 		"html":      html,
 		"path":      path,
 		"filename":  filepath.Base(path),
-		"wordCount": wordCount,
-	})
+		"wordCount": len(strings.Fields(string(data))),
+	}
+	// During startup the WebView hasn't loaded yet — cache and flush in Ready().
+	// After startup, emit directly (watcher updates, MCP open_file, etc.).
+	if a.pendingRender != nil {
+		a.pendingRender = payload
+		return
+	}
+	runtime.EventsEmit(a.ctx, "markdown:rendered", payload)
 }
 
 // GetCurrentFile returns metadata about the open file (used by MCP + frontend).

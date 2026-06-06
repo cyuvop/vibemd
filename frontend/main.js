@@ -50,7 +50,10 @@ document.getElementById('btn-theme').addEventListener('click', toggleTheme);
 window.addEventListener('load', () => {
   applyTheme(currentTheme);
 
-  // Listen for events from Go
+  // Register event listeners first, then tell Go we're ready.
+  // Go may have tried to emit during startup before JS loaded — Ready() flushes that.
   window.runtime.EventsOn('markdown:rendered', onMarkdownRendered);
   window.runtime.EventsOn('theme:changed', applyTheme);
+
+  window.go.main.App.Ready();
 });
