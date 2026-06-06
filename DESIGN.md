@@ -310,7 +310,168 @@ scroll_to_heading, set_theme, open_file
 
 ---
 
-## 9. Implementation Plan
+## 9. Single-File Build & Distribution
+
+### How it stays self-contained
+
+Wails uses Go's `//go:embed` directive to bake the entire `frontend/` directory (HTML, CSS, fonts) into the binary at compile time. The result is one file with no external runtime dependencies — no Node.js, no Python, no separate web assets folder.
+
+```go
+//go:embed all:frontend/dist
+var assets embed.FS
+```
+
+`wails build` runs this automatically. The output on each platform:
+
+| Platform | Output | User experience |
+|----------|--------|-----------------|
+| macOS (Intel) | `vibemd.app` → `vibemd-mac-intel.dmg` | Drag to Applications, double-click |
+| macOS (Apple Silicon) | `vibemd.app` → `vibemd-mac-arm.dmg` | Drag to Applications, double-click |
+| macOS (Universal) | `vibemd.app` → `vibemd-mac.dmg` | One DMG runs on both Mac types |
+| Windows | `vibemd-setup.exe` | Double-click installer, done |
+
+### macOS Build
+
+```bash
+# Universal binary — runs natively on Intel and Apple Silicon
+wails build -platform darwin/universal -clean
+
+# Package as DMG (requires create-dmg, installable via brew)
+brew install create-dmg
+create-dmg \
+  --volname "vibemd" \
+  --background "build/dmg-background.png" \
+  --window-size 540 380 \
+  --icon-size 128 \
+  --icon "vibemd.app" 160 190 \
+  --app-drop-link 380 190 \
+  "dist/vibemd-mac.dmg" \
+  "build/bin/vibemd.app"
+```
+
+WKWebView is built into macOS — no runtime download required. The `.app` bundle is fully self-contained.
+
+macOS notarization (required for Gatekeeper):
+```bash
+# Sign
+codesign --deep --force --verify --verbose \
+  --sign "Developer ID Application: <name>" \
+  --options runtime \
+  build/bin/vibemd.app
+
+# Notarize (Apple's server validates the binary)
+xcrun notarytool submit dist/vibemd-mac.dmg \
+  --apple-id "$APPLE_ID" \
+  --password "$APPLE_APP_PASSWORD" \
+  --team-id "$TEAM_ID" \
+  --wait
+
+# Staple the notarization ticket into the DMG
+xcrun stapler staple dist/vibemd-mac.dmg
+```
+
+### Windows Build
+
+```bash
+# From a Windows runner (CGo requires native toolchain)
+wails build -platform windows/amd64 -clean -nsis
+```
+
+The `-nsis` flag generates a single `vibemd-setup.exe` installer (via NSIS) that:
+1. Installs `vibemd.exe` to `%PROGRAMFILES%\vibemd\`
+2. Checks for WebView2 runtime — downloads the Evergreen bootstrapper (~1.5 MB) if absent (Windows 11 ships with it pre-installed; most Windows 10 machines already have it via Edge)
+3. Registers `.md` / `.markdown` file associations in the registry
+4. Creates Start Menu + Desktop shortcuts
+5. Adds an uninstaller entry in Add/Remove Programs
+
+**Windows 11**: zero extra downloads — WebView2 is pre-installed system-wide.
+**Windows 10**: the installer silently fetches the Evergreen bootstrapper once, then the app runs standalone forever after.
+
+Authenticode signing (removes SmartScreen warning):
+```powershell
+signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 `
+  /f cert.pfx /p $env:CERT_PASSWORD `
+  dist\vibemd-setup.exe
+```
+
+### Local Build (one command)
+
+`Makefile` at repo root:
+
+```makefile
+.PHONY: mac windows all
+
+mac:
+	wails build -platform darwin/universal -clean
+	create-dmg --volname "vibemd" dist/vibemd-mac.dmg build/bin/vibemd.app
+
+windows:
+	wails build -platform windows/amd64 -clean -nsis
+
+all: mac windows
+```
+
+```bash
+make mac      # → dist/vibemd-mac.dmg
+make windows  # → dist/vibemd-setup.exe  (run on Windows or CI)
+make all      # both
+```
+
+### GitHub Actions CI
+
+Cross-compilation of CGo is not supported — each platform must build on its own native runner.
+
+```yaml
+# .github/workflows/release.yml
+jobs:
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: '1.23' }
+      - run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+      - run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - run: govulncheck ./...          # OWASP A06 gate
+      - run: wails build -platform darwin/universal -clean
+      - run: brew install create-dmg && make mac-dmg
+      - uses: actions/upload-artifact@v4
+        with: { name: vibemd-mac, path: dist/vibemd-mac.dmg }
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: '1.23' }
+      - run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+      - run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - run: govulncheck ./...
+      - run: wails build -platform windows/amd64 -clean -nsis
+      - uses: actions/upload-artifact@v4
+        with: { name: vibemd-windows, path: dist/vibemd-setup.exe }
+
+  release:
+    needs: [build-mac, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            vibemd-mac/vibemd-mac.dmg
+            vibemd-windows/vibemd-setup.exe
+```
+
+On every tagged release (`git tag v0.1.0 && git push --tags`), CI produces:
+- `vibemd-mac.dmg` — drag-to-Applications, universal binary
+- `vibemd-setup.exe` — one-click Windows installer
+
+Both are attached to the GitHub Release automatically.
+
+---
+
+## 10. Implementation Plan
 
 ### Phase 0 — Scaffold (Week 1)
 - [ ] `wails init -n vibemd -t vanilla` — Go + vanilla HTML template (no JS framework)
@@ -330,8 +491,9 @@ scroll_to_heading, set_theme, open_file
 - [ ] Keyboard shortcuts (`Cmd+W`, `Cmd+T`, `Cmd+K`) via Wails menu API
 - [ ] Status bar (filename, word count, theme indicator, MCP status)
 - [ ] macOS `wails.json` UTI + Windows NSIS file association testing
-- [ ] Code signing (macOS notarization via `wails build --sign`, Windows Authenticode)
-- [ ] GitHub Actions CI matrix (macOS-latest, windows-latest) + `govulncheck`
+- [ ] `Makefile` with `make mac` / `make windows` / `make all` targets (see §9)
+- [ ] GitHub Actions release workflow — tagged push → DMG + setup.exe on GitHub Releases
+- [ ] Code signing: macOS notarization + Windows Authenticode (see §9)
 
 ### Phase 3 — MCP Server (Week 4)
 - [ ] Pure Go MCP server over stdio (JSON-RPC 2.0, stdlib `encoding/json`)
@@ -349,7 +511,7 @@ scroll_to_heading, set_theme, open_file
 
 ---
 
-## 10. Repo Structure
+## 11. Repo Structure
 
 ```
 vibemd/
@@ -376,28 +538,39 @@ vibemd/
 │   ├── fonts/              # Press Start 2P, JetBrains Mono (locally bundled)
 │   └── main.js             # ~50 lines: Wails event listeners + theme class toggle
 ├── wails.json              # Wails config: window, CSP, file associations
+├── Makefile                # make mac / make windows / make all
 ├── go.mod
 ├── go.sum                  # Cryptographic module hashes
+├── build/
+│   ├── dmg-background.png  # Artwork for the macOS DMG window
+│   ├── installer.nsi       # Custom NSIS script (file associations, WebView2 check)
+│   └── appicon.png         # App icon (1024×1024, used for .icns + .ico generation)
+├── dist/                   # Build outputs (gitignored)
+│   ├── vibemd-mac.dmg      # macOS universal DMG
+│   └── vibemd-setup.exe    # Windows NSIS installer
+├── .github/
+│   └── workflows/
+│       └── release.yml     # CI: govulncheck → build mac + windows → GitHub Release
 ├── AGENTS.md               # AI tool integration docs
 ├── CLAUDE.md               # Claude Code context
 └── DESIGN.md               # This document
 ```
 
-**Zero npm. Zero node_modules. `go build` is the only build command for logic.**
+**Zero npm. Zero node_modules. `make mac` or `make windows` is all it takes.**
 
 ---
 
-## 11. Open Questions
+## 12. Open Questions
 
-1. **Wails file associations on Windows**: Wails v2 does not have a built-in `fileAssociations` field like Tauri — requires custom NSIS script in the installer. Needs testing on Windows 10 vs 11.
-2. **Mermaid server-side rendering**: `mermaid-go` (Go port) is less mature than the JS original. May need to ship a minimal sandboxed headless renderer or pre-render at install time.
-3. **Press Start 2P readability**: Heading-only use of the font should be readable, but needs visual testing with real-world `.md` files of varying heading density.
-4. **Windows SmartScreen**: First-run UX for unsigned builds — document clearly in README for early adopters until Authenticode signing is set up.
-5. **Wails v3 timeline**: Wails v3 (alpha as of 2025) drops the WebView2 bundling requirement on Windows. Worth monitoring for the v0.3 milestone.
+1. **Windows file association via NSIS**: The custom NSIS script must write the correct registry keys for both Windows 10 and 11. Needs end-to-end testing — specifically that "Open With" appears in Explorer and the default-app dialog works.
+2. **macOS notarization in CI**: Requires an Apple Developer ID cert and app-specific password stored as GitHub Actions secrets. Document the secret setup in the repo wiki.
+3. **Mermaid server-side rendering**: `mermaid-go` (Go port) is less mature than the JS original. May need to ship a minimal sandboxed headless renderer or pre-render at install time.
+4. **Press Start 2P readability**: Heading-only use of the font should be readable, but needs visual testing with real-world `.md` files of varying heading density.
+5. **Wails v3 timeline**: Wails v3 (alpha as of 2025) removes the WebView2 bootstrapper requirement on Windows by embedding it differently. Worth evaluating before the v0.3 release.
 
 ---
 
-## 12. Key Go Dependencies
+## 13. Key Go Dependencies
 
 | Package | Purpose |
 |---------|---------|
@@ -409,7 +582,7 @@ vibemd/
 | `github.com/zalando/go-keyring` | OS keychain (macOS / Windows Credential Manager) |
 | `golang.org/x/vuln/cmd/govulncheck` | CVE scanning for all Go modules (CI) |
 
-## 13. Sources
+## 14. Sources
 
 - Marked 2 App: https://marked2app.com/
 - SoloMD security model: https://github.com/zhitongblog/solomd
