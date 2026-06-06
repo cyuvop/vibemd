@@ -34,34 +34,44 @@ There is no macOS + Windows app that combines native file association, MCP integ
 
 ## 3. Tech Stack
 
-### Framework: Tauri 2 (Rust + WebView)
+### Framework: Wails v2 (Go + system WebView)
+- Go backend handles all logic, rendering, file I/O, and MCP — zero JavaScript business logic
 - Uses system WebView (WKWebView on macOS, WebView2 on Windows) — small binary, no Chromium bundle
-- Rust backend provides memory safety for file I/O
-- CSP is enforced at the framework level with locally-bundled assets only (no CDN scripts — Tauri's documented best practice)
-- `fileAssociations` config in `tauri.conf.json` handles "Open With" registration on both platforms
+- Go IPC bindings (`wails.Bind`) expose Go structs directly to the frontend — no hand-written JS glue
+- File associations registered via OS-specific installer config (macOS `.plist` UTI, Windows NSIS registry)
+- Single `wails build` command produces a signed, self-contained binary
 
-### UI: React 18 + TypeScript + Vite
-- `@tauri-apps/api` for IPC (file open, theme detection, keychain access)
-- `nativeTheme` events via Tauri for system light/dark detection
+**Why Go over Rust/Tauri:**
+- No npm, no `node_modules` — eliminates the entire JS supply chain attack surface (OWASP A06)
+- `go.sum` provides cryptographic hash verification for every module dependency
+- `govulncheck ./...` scans all transitive deps against the Go vuln database — standard CI step
+- Rendering pipeline runs entirely in Go: HTML is sanitized before it ever reaches the WebView
+- Single binary output, `go build` reproducibility, no runtime to exploit
+
+### Frontend: Vanilla HTML + CSS only
+- No JavaScript framework, no npm packages — the frontend is a pure display layer
+- Go pre-renders the full sanitized HTML string and pushes it via Wails IPC
+- The only JS is ~50 lines of Wails runtime glue (auto-generated) + theme class toggling
+- NES.css (locally bundled CSS file) provides all 8-bit component styles
+- Press Start 2P font locally bundled — no Google Fonts CDN call
 
 ### 8-bit Design System
 - **NES.css** — established retro component library (pixel borders, dialog boxes, progress bars)
-- **Press Start 2P** (Google Fonts, locally bundled) — canonical 8-bit typeface
+- **Press Start 2P** (locally bundled) — canonical 8-bit typeface
 - **Custom CSS** — scanline overlay, CRT glow on headings, pixelated scrollbar
 - Dark mode: dark phosphor green (`#00FF41`) accents on near-black (`#0d0d0d`)
 - Light mode: cream paper (`#FFF9E6`) with black pixel borders
 
-### Markdown Rendering
-- **marked.js** (not markdown-to-jsx — see CVE-2024-21535 below)
-- **DOMPurify 3.x** — sanitize rendered HTML before injection
-- **Mermaid.js** — diagram rendering (locally bundled, not CDN)
-- **KaTeX** — math rendering (locally bundled)
-- **Prism.js** — syntax highlighting with 8-bit color theme
+### Markdown Rendering (Go-side, server-side)
+- **goldmark** (`github.com/yuin/goldmark`) — GFM-compliant Markdown → HTML in Go; extensible, actively maintained
+- **bluemonday** (`github.com/microcosm-cc/bluemonday`) — HTML sanitization in Go; Go's battle-tested equivalent of DOMPurify; allowlist defined in Go, not JS config
+- **chroma** (`github.com/alecthomas/chroma`) — syntax highlighting in Go; outputs pre-styled HTML, no client-side JS needed
+- HTML is fully sanitized in Go *before* being passed to the WebView — the browser never sees unsanitized content
 
 ### AI / MCP Integration
-- **Built-in MCP server** (stdio transport) — exposes the currently-open file and rendering state to AI tools
-- API keys stored in OS keychain only: macOS Keychain / Windows Credential Manager via `keyring` crate
-- No relay server — all AI requests are direct from user machine to provider
+- **Built-in MCP server** (stdio transport) in pure Go — hand-rolled JSON-RPC 2.0, no third-party MCP crate
+- API keys stored in OS keychain: macOS Keychain / Windows Credential Manager via `github.com/zalando/go-keyring`
+- No relay server — all AI requests direct from user machine to provider
 
 ---
 
@@ -69,12 +79,12 @@ There is no macOS + Windows app that combines native file association, MCP integ
 
 ### MVP (v0.1)
 - [x] Open a `.md` file from CLI: `vibemd README.md`
-- [x] Render Markdown with GFM (tables, task lists, strikethrough)
+- [x] Render Markdown with GFM (tables, task lists, strikethrough) via goldmark
 - [x] Light / dark mode (system-following, toggle override)
 - [x] 8-bit visual theme (NES.css + Press Start 2P)
 - [x] "Open With" registration on macOS and Windows
-- [x] Syntax highlighting (Prism.js, locally bundled)
-- [x] File-watching: auto-refresh when the `.md` file changes on disk
+- [x] Syntax highlighting via chroma (Go-side, zero client JS)
+- [x] File-watching: auto-refresh when the `.md` file changes on disk (fsnotify)
 - [x] Keyboard shortcut: `Cmd/Ctrl+W` to close, `Cmd/Ctrl+T` to toggle theme
 
 ### v0.2 — AI Tools
@@ -172,38 +182,56 @@ Link:       #0000CC
 ### Threat Model
 vibemd opens arbitrary `.md` files from disk — some may be untrusted (cloned repos, AI-generated). The rendering pipeline must not execute attacker-controlled code.
 
+### Why Go improves on the previous Rust/JS design (OWASP alignment)
+
+| OWASP Top 10 | Previous (Tauri + JS) | Go approach |
+|---|---|---|
+| A03 Injection / XSS | DOMPurify in browser JS | bluemonday sanitizes in Go *before* WebView sees HTML |
+| A06 Vulnerable Components | npm audit (node_modules) | `govulncheck ./...` against Go vuln DB; `go.sum` hash pinning |
+| A08 Software Integrity | npm lockfile (weaker) | `go.sum` SHA-256 per module, verified at build time |
+| A09 Logging Failures | ad-hoc | Go `log/slog` structured logging, errors surfaced explicitly |
+
 ### Mitigations
 
 | Threat | Mitigation |
 |--------|------------|
-| XSS in rendered HTML (CVE-2024-21535 class) | DOMPurify 3.x with strict config (deny `<iframe>`, `<script>`, `javascript:` URIs) |
-| Remote script injection | CSP: `script-src 'self'` — no CDN, no inline scripts |
-| Malicious `<iframe src="javascript:...">` | DOMPurify blocks `javascript:` in all attributes |
-| AI API key exposure | OS keychain only (macOS Keychain / Windows Credential Manager via Rust `keyring` crate) |
-| Remote relay eavesdropping | No relay — AI requests go directly from user machine to provider |
-| Electron-style Node.js RCE | Tauri: renderer has no Node.js / no `nodeIntegration` equivalent |
-| Mermaid/KaTeX script injection | Both loaded as locally-bundled ESM, not CDN `<script>` tags |
+| XSS in rendered HTML (CVE-2024-21535 class) | bluemonday allowlist in Go — HTML never reaches WebView unsanitized |
+| Remote script injection | CSP: `script-src 'self'`; Wails embeds assets locally, no CDN |
+| Malicious `<iframe src="javascript:...">` | bluemonday strips `<iframe>` entirely; Go-side, not browser-side |
+| AI API key exposure | OS keychain only via `go-keyring` — never in env vars, config files, or logs |
+| Remote relay eavesdropping | No relay — direct HTTP from user machine to provider |
+| WebView RCE via Node.js | No Node.js — Wails frontend has no runtime; Go handles all I/O |
+| Supply chain compromise | No npm; `go.sum` pins every transitive dep by SHA-256 |
+| Known vuln in deps | `govulncheck ./...` in CI catches CVEs across all Go modules |
 
-### DOMPurify Config
-```js
-DOMPurify.sanitize(html, {
-  ALLOWED_TAGS: ['p','h1','h2','h3','h4','h5','h6','ul','ol','li','blockquote',
-                 'pre','code','em','strong','del','table','thead','tbody','tr',
-                 'th','td','a','img','hr','br','details','summary','span','div'],
-  ALLOWED_ATTR: ['href','src','alt','title','class','id','target','rel',
-                 'data-language','checked','disabled'],
-  ALLOW_DATA_ATTR: false,
-  FORCE_BODY: true,
-  FORBID_TAGS: ['script','iframe','object','embed','form','input','button'],
-  FORBID_ATTR: ['onerror','onload','onclick','style'],
-})
+### bluemonday Policy (Go)
+```go
+p := bluemonday.NewPolicy()
+p.AllowElements("p","h1","h2","h3","h4","h5","h6",
+    "ul","ol","li","blockquote","pre","code",
+    "em","strong","del","table","thead","tbody",
+    "tr","th","td","hr","br","details","summary",
+    "span","div")
+p.AllowAttrs("href").OnElements("a")
+p.AllowAttrs("src","alt","title").OnElements("img")
+p.AllowAttrs("class").OnElements("code","pre","span","div")
+p.AllowAttrs("checked","disabled").OnElements("input")
+p.RequireNoFollowOnLinks(true)
+p.RequireNoReferrerOnLinks(true)
+// No style, no onerror, no onclick, no iframe, no script — ever
 ```
 
-### CSP Header (tauri.conf.json)
+### CSP (Wails wails.json)
 ```json
 "security": {
-  "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'none'"
+  "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'"
 }
+```
+
+### Dependency Audit CI Step
+```yaml
+- name: govulncheck
+  run: go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck ./...
 ```
 
 ---
@@ -211,26 +239,32 @@ DOMPurify.sanitize(html, {
 ## 7. File Association ("Open With")
 
 ### macOS
-In `tauri.conf.json`:
+Wails embeds an `Info.plist` in the `.app` bundle. Add to `wails.json`:
 ```json
-"macOS": {
-  "fileAssociations": [
-    { "ext": ["md", "markdown", "mdown", "mkd"], "name": "Markdown Document", "role": "Viewer" }
-  ]
+"mac": {
+  "bundleId": "com.cyuvop.vibemd",
+  "info": {
+    "CFBundleDocumentTypes": [{
+      "CFBundleTypeName": "Markdown Document",
+      "CFBundleTypeRole": "Viewer",
+      "LSHandlerRank": "Alternate",
+      "LSItemContentTypes": ["net.daringfireball.markdown"],
+      "CFBundleTypeExtensions": ["md","markdown","mdown","mkd"]
+    }]
+  }
 }
 ```
-This registers the app in the macOS UTI system. After install, right-click any `.md` → "Open With" → vibemd. Can be set as default with "Always Open With."
+Go receives the file path via the Wails `OnFileOpen` event. Right-click any `.md` → "Open With" → vibemd, or "Always Open With" to set as default.
 
 ### Windows
-In `tauri.conf.json`:
-```json
-"windows": {
-  "fileAssociations": [
-    { "ext": ["md", "markdown"], "name": "Markdown Document" }
-  ]
-}
+NSIS installer script registers file extensions in the registry:
+```nsi
+WriteRegStr HKCR ".md"    "" "vibemd.Document"
+WriteRegStr HKCR ".markdown" "" "vibemd.Document"
+WriteRegStr HKCR "vibemd.Document" "" "Markdown Document"
+WriteRegStr HKCR "vibemd.Document\shell\open\command" "" '"$INSTDIR\vibemd.exe" "%1"'
 ```
-NSIS/WiX installer registers the file extension. First run prompts to set as default. Windows SmartScreen bypass is expected on first run for unsigned builds — release builds will be code-signed.
+First run prompts to set as default. Release builds will be Authenticode-signed to avoid SmartScreen on first run.
 
 ### CLI Entry Point
 ```bash
@@ -279,40 +313,39 @@ scroll_to_heading, set_theme, open_file
 ## 9. Implementation Plan
 
 ### Phase 0 — Scaffold (Week 1)
-- [ ] `npm create tauri-app@latest vibemd` — React + TypeScript template
-- [ ] Add NES.css, Press Start 2P (locally bundled)
-- [ ] Basic window chrome with 8-bit title bar
-- [ ] File open via CLI arg + `tauri::Manager` file association handler
-- [ ] Wire `nativeTheme` → CSS class toggle
+- [ ] `wails init -n vibemd -t vanilla` — Go + vanilla HTML template (no JS framework)
+- [ ] Add NES.css, Press Start 2P as static assets (no npm)
+- [ ] Basic window chrome with 8-bit title bar in HTML/CSS
+- [ ] File open via CLI arg + Wails `OnFileOpen` handler in `main.go`
+- [ ] Wire system theme detection (`runtime.WindowGetSystemTheme`) → CSS class on `<body>`
 
 ### Phase 1 — Markdown Rendering (Week 2)
-- [ ] marked.js integration with GFM extensions
-- [ ] DOMPurify sanitization pipeline
-- [ ] 8-bit styled CSS for all Markdown elements (headings, code, tables, blockquotes)
-- [ ] Prism.js syntax highlighting (locally bundled, dark/light themes)
-- [ ] File watcher (`notify` crate in Tauri backend) → IPC → re-render
+- [ ] goldmark with GFM extension (`github.com/yuin/goldmark`)
+- [ ] bluemonday sanitization policy (see §6)
+- [ ] chroma syntax highlighting — Go outputs pre-colored `<span>` HTML, no client JS
+- [ ] 8-bit CSS for all rendered Markdown elements (headings, code, tables, blockquotes)
+- [ ] fsnotify file watcher (`github.com/fsnotify/fsnotify`) → Wails event → frontend re-renders
 
 ### Phase 2 — Polish & Distribution (Week 3)
-- [ ] Keyboard shortcuts (`Cmd+W`, `Cmd+T`, `Cmd+K`)
+- [ ] Keyboard shortcuts (`Cmd+W`, `Cmd+T`, `Cmd+K`) via Wails menu API
 - [ ] Status bar (filename, word count, theme indicator, MCP status)
-- [ ] macOS "Open With" + Windows file association testing
-- [ ] Code signing setup (macOS notarization, Windows Authenticode)
-- [ ] GitHub Actions CI: build matrix (macOS-latest, windows-latest)
+- [ ] macOS `wails.json` UTI + Windows NSIS file association testing
+- [ ] Code signing (macOS notarization via `wails build --sign`, Windows Authenticode)
+- [ ] GitHub Actions CI matrix (macOS-latest, windows-latest) + `govulncheck`
 
 ### Phase 3 — MCP Server (Week 4)
-- [ ] Rust MCP server over stdio (`mcp-server` crate or hand-rolled JSON-RPC)
-- [ ] Implement 6 tools (see §8)
-- [ ] `AGENTS.md` + `CLAUDE.md` in repo
-- [ ] Test with `claude mcp add` + Claude Code session
+- [ ] Pure Go MCP server over stdio (JSON-RPC 2.0, stdlib `encoding/json`)
+- [ ] Implement 6 tools (see §8) — all state held in Go, no JS involved
+- [ ] `AGENTS.md` + `CLAUDE.md` in repo root
+- [ ] Test with `claude mcp add vibemd -- vibemd --mcp`
 - [ ] Document one-liner in README
 
 ### Phase 4 — Power Features (Week 5+)
-- [ ] Mermaid.js rendering (locally bundled)
-- [ ] KaTeX math rendering (locally bundled)
-- [ ] Recent files (stored in Tauri app data dir)
-- [ ] Theme switcher UI
-- [ ] PDF export via Tauri print API
-- [ ] Custom per-file CSS (`.vibemd.css` sidecar)
+- [ ] Mermaid diagram rendering — Go calls mermaid-go or pre-renders SVG server-side
+- [ ] Recent files list (stored in OS config dir via `os.UserConfigDir()`)
+- [ ] Theme switcher UI (NES.css styled)
+- [ ] PDF export via Wails print / OS print dialog
+- [ ] Custom per-file CSS sidecar (`.vibemd.css` alongside the `.md` file)
 
 ---
 
@@ -320,53 +353,69 @@ scroll_to_heading, set_theme, open_file
 
 ```
 vibemd/
-├── src/                    # React frontend
-│   ├── components/
-│   │   ├── TitleBar.tsx    # 8-bit window title
-│   │   ├── MarkdownView.tsx # Rendered content area
-│   │   ├── StatusBar.tsx   # Bottom status strip
-│   │   └── CommandPalette.tsx
-│   ├── styles/
-│   │   ├── nes-overrides.css  # NES.css customizations
-│   │   ├── dark.css           # Dark phosphor theme
-│   │   ├── light.css          # Light paper theme
-│   │   └── markdown.css       # Rendered MD element styles
-│   ├── lib/
-│   │   ├── renderer.ts    # marked.js + DOMPurify pipeline
-│   │   └── mcp.ts         # MCP client for status
-│   └── main.tsx
-├── src-tauri/
-│   ├── src/
-│   │   ├── main.rs         # Tauri app entry, file association handler
-│   │   ├── watcher.rs      # File watch → emit event
-│   │   └── mcp_server.rs   # MCP stdio server
-│   └── tauri.conf.json     # File associations, CSP, window config
-├── assets/                 # Locally bundled fonts, NES.css
+├── main.go                 # Wails entry point, CLI arg handling, file open
+├── app.go                  # App struct — Wails-bound Go API exposed to frontend
+├── renderer/
+│   ├── renderer.go         # goldmark → HTML pipeline
+│   ├── sanitize.go         # bluemonday policy definition
+│   └── highlight.go        # chroma syntax highlighting config
+├── watcher/
+│   └── watcher.go          # fsnotify wrapper → Wails event emit
+├── mcp/
+│   └── server.go           # JSON-RPC 2.0 stdio MCP server + 6 tools
+├── keychain/
+│   └── keychain.go         # go-keyring wrapper for AI API keys
+├── frontend/               # Pure HTML/CSS — display layer only
+│   ├── index.html          # Main window template
+│   ├── style/
+│   │   ├── nes.css         # NES.css (locally bundled, unmodified)
+│   │   ├── overrides.css   # NES.css customizations
+│   │   ├── dark.css        # Dark phosphor theme
+│   │   ├── light.css       # Light paper theme
+│   │   └── markdown.css    # Rendered MD element styles
+│   ├── fonts/              # Press Start 2P, JetBrains Mono (locally bundled)
+│   └── main.js             # ~50 lines: Wails event listeners + theme class toggle
+├── wails.json              # Wails config: window, CSP, file associations
+├── go.mod
+├── go.sum                  # Cryptographic module hashes
 ├── AGENTS.md               # AI tool integration docs
 ├── CLAUDE.md               # Claude Code context
 └── DESIGN.md               # This document
 ```
 
----
-
-## 11. Open Questions (from Research)
-
-1. **Tauri file associations**: Needs testing on both platforms — the `fileAssociations` field may have edge cases on Windows 10 vs 11 and macOS 12 vs 14.
-2. **MCP server crate**: Evaluate `mcp-server` (Rust) vs hand-rolled JSON-RPC over stdio. The ecosystem is young (2025).
-3. **DOMPurify in Tauri**: DOMPurify requires a DOM — confirm it runs cleanly in Tauri's WebView renderer process (expected: yes, it runs in the web layer).
-4. **Press Start 2P readability**: Heading-only use of the font should be readable, but needs visual testing with real-world `.md` files of varying heading density.
-5. **Windows SmartScreen**: First-run bypass UX for unsigned builds — document clearly in README for early adopters.
+**Zero npm. Zero node_modules. `go build` is the only build command for logic.**
 
 ---
 
-## 12. Sources
+## 11. Open Questions
+
+1. **Wails file associations on Windows**: Wails v2 does not have a built-in `fileAssociations` field like Tauri — requires custom NSIS script in the installer. Needs testing on Windows 10 vs 11.
+2. **Mermaid server-side rendering**: `mermaid-go` (Go port) is less mature than the JS original. May need to ship a minimal sandboxed headless renderer or pre-render at install time.
+3. **Press Start 2P readability**: Heading-only use of the font should be readable, but needs visual testing with real-world `.md` files of varying heading density.
+4. **Windows SmartScreen**: First-run UX for unsigned builds — document clearly in README for early adopters until Authenticode signing is set up.
+5. **Wails v3 timeline**: Wails v3 (alpha as of 2025) drops the WebView2 bundling requirement on Windows. Worth monitoring for the v0.3 milestone.
+
+---
+
+## 12. Key Go Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `github.com/wailsapp/wails/v2` | Desktop app framework (Go + system WebView) |
+| `github.com/yuin/goldmark` | Markdown → HTML (GFM, extensible) |
+| `github.com/microcosm-cc/bluemonday` | HTML sanitization (OWASP XSS defense) |
+| `github.com/alecthomas/chroma/v2` | Syntax highlighting (Go-side, no client JS) |
+| `github.com/fsnotify/fsnotify` | Cross-platform file watching |
+| `github.com/zalando/go-keyring` | OS keychain (macOS / Windows Credential Manager) |
+| `golang.org/x/vuln/cmd/govulncheck` | CVE scanning for all Go modules (CI) |
+
+## 13. Sources
 
 - Marked 2 App: https://marked2app.com/
 - SoloMD security model: https://github.com/zhitongblog/solomd
 - Noteriv MCP pattern: https://github.com/thejacedev/Noteriv
-- Tauri CSP: https://v2.tauri.app/security/csp/
-- Electron dark mode: https://www.electronjs.org/docs/latest/tutorial/dark-mode
-- 8bitcn/ui: https://github.com/TheOrcDev/8bitcn-ui
+- Wails: https://wails.io/
+- bluemonday: https://github.com/microcosm-cc/bluemonday
 - NES.css: https://github.com/nostalgic-css/NES.css
 - CVE-2024-21535: https://security.snyk.io/vuln/SNYK-JS-MARKDOWNTOJSX-6258886
 
