@@ -13,4 +13,6 @@ export function OpenFile(arg1:string):Promise<void>;
 
 export function Ready():Promise<void>;
 
+export function Refresh():Promise<void>;
+
 export function SetTheme(arg1:string):Promise<void>;

@@ -101,6 +101,58 @@ body {
   border-color: var(--accent);
 }
 
+/* ── Busy overlay ──────────────────────────────── */
+#busy-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+#busy-overlay.visible {
+  display: flex;
+}
+
+.busy-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 32px;
+  border: 2px solid var(--accent);
+  background: var(--surface);
+  font-family: 'Press Start 2P', monospace;
+  color: var(--accent);
+}
+
+.busy-spinner {
+  font-size: 24px;
+  animation: spin-frames 0.7s steps(1) infinite;
+}
+
+.busy-label {
+  font-size: 9px;
+  letter-spacing: 3px;
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes spin-frames {
+  0%   { content: '⣾'; } 12%  { content: '⣽'; }
+  25%  { content: '⣻'; } 37%  { content: '⢿'; }
+  50%  { content: '⡿'; } 62%  { content: '⣟'; }
+  75%  { content: '⣯'; } 87%  { content: '⣷'; }
+}
+
+/* CSS animation on span content doesn't work — use JS frame swap instead */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
 /* ── Splash screen ─────────────────────────────── */
 .splash {
   text-align: center;

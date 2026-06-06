@@ -26,6 +26,10 @@ export function Ready() {
   return window['go']['main']['App']['Ready']();
 }
 
+export function Refresh() {
+  return window['go']['main']['App']['Refresh']();
+}
+
 export function SetTheme(arg1) {
   return window['go']['main']['App']['SetTheme'](arg1);
 }

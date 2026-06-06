@@ -82,6 +82,10 @@ func (a *App) OpenFile(path string) error {
 }
 
 func (a *App) emitRender(path string, data []byte) {
+	// Signal busy state before the (potentially slow) render.
+	if a.pendingRender == nil {
+		runtime.EventsEmit(a.ctx, "render:start", nil)
+	}
 	html := renderer.RenderMarkdown(string(data))
 	payload := map[string]interface{}{
 		"html":      html,
@@ -131,6 +135,19 @@ func (a *App) GetRenderedHTML() string {
 
 // GetFilePath returns the currently open file path.
 func (a *App) GetFilePath() string { return a.filePath }
+
+// Refresh re-reads and re-renders the current file on demand.
+func (a *App) Refresh() error {
+	if a.filePath == "" {
+		return nil
+	}
+	data, err := os.ReadFile(a.filePath)
+	if err != nil {
+		return err
+	}
+	a.emitRender(a.filePath, data)
+	return nil
+}
 
 // SetTheme emits a theme-change event (callable from MCP and frontend).
 func (a *App) SetTheme(theme string) {

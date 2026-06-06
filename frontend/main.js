@@ -1,7 +1,26 @@
 'use strict';
 
 // Wails runtime is injected at /wails/ipc.js
-// All business logic lives in Go — this file is display-only glue (~60 lines).
+// All business logic lives in Go — this file is display-only glue.
+
+// ── Busy overlay ──────────────────────────────────
+const SPINNER_FRAMES = ['⣾','⣽','⣻','⢿','⡿','⣟','⣯','⣷'];
+let spinnerInterval = null;
+
+function showBusy() {
+  const overlay = document.getElementById('busy-overlay');
+  overlay.classList.add('visible');
+  let f = 0;
+  spinnerInterval = setInterval(() => {
+    document.getElementById('busy-spinner').textContent = SPINNER_FRAMES[f++ % SPINNER_FRAMES.length];
+  }, 80);
+}
+
+function hideBusy() {
+  clearInterval(spinnerInterval);
+  spinnerInterval = null;
+  document.getElementById('busy-overlay').classList.remove('visible');
+}
 
 let currentTheme = localStorage.getItem('vibemd-theme') || 'dark';
 
@@ -15,6 +34,7 @@ function applyTheme(theme) {
 }
 
 function onMarkdownRendered(data) {
+  hideBusy();
   const content = document.getElementById('content');
   content.innerHTML = data.html;
 
@@ -98,12 +118,19 @@ document.getElementById('btn-linenum').addEventListener('click', () => {
   applyLineNumbers(!lineNumbersOn);
 });
 
+// ── Manual refresh ────────────────────────────────
+document.getElementById('btn-refresh').addEventListener('click', () => {
+  showBusy();
+  window.go.main.App.Refresh().catch(hideBusy);
+});
+
 // Boot
 window.addEventListener('load', () => {
   applyTheme(currentTheme);
 
   // Register event listeners first, then tell Go we're ready.
   // Go may have tried to emit during startup before JS loaded — Ready() flushes that.
+  window.runtime.EventsOn('render:start', showBusy);
   window.runtime.EventsOn('markdown:rendered', onMarkdownRendered);
   window.runtime.EventsOn('theme:changed', applyTheme);
 

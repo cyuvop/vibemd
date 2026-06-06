@@ -17,6 +17,13 @@
     <span class="titlebar-file" id="titlebar-filename">no file open</span>
   </header>
 
+  <div id="busy-overlay" aria-hidden="true">
+    <div class="busy-box">
+      <span class="busy-spinner" id="busy-spinner">⣾</span>
+      <span class="busy-label">LOADING</span>
+    </div>
+  </div>
+
   <main id="content" class="markdown-body">
     <div class="splash">
       <p class="nes-text is-primary">VIBEMD v0.1</p>
@@ -31,6 +38,7 @@
     <button class="status-chip status-btn" id="btn-theme" title="Toggle theme">DARK</button>
     <span class="status-chip" id="status-mcp">MCP: OFF</span>
     <button class="status-chip status-btn" id="btn-linenum" title="Toggle line numbers"># LN</button>
+    <button class="status-chip status-btn" id="btn-refresh" title="Reload file">↺ SYNC</button>
   </footer>
 
   <script src="/wails/ipc.js"></script>
