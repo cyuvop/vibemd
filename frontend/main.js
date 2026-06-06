@@ -17,7 +17,13 @@ function applyTheme(theme) {
 function onMarkdownRendered(data) {
   const content = document.getElementById('content');
   content.innerHTML = data.html;
-  document.getElementById('titlebar-filename').textContent = data.filename || '';
+
+  const path = data.path || '';
+  const displayPath = path.length > 50 ? path.slice(0, 50) + '…' : path;
+  const titleLabel = data.filename
+    ? `${data.filename} (${displayPath})`
+    : '';
+  document.getElementById('titlebar-filename').textContent = titleLabel;
   document.getElementById('status-filename').textContent = data.filename || '—';
   document.getElementById('status-words').textContent =
     (data.wordCount || 0) + ' words';
