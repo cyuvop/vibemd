@@ -28,7 +28,10 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 6px 12px;
+  /* 80px left padding clears the macOS traffic-light buttons (close/min/max)
+     which sit at ~12px from the left edge and span ~68px with TitleBarHiddenInset */
+  padding: 6px 12px 6px 80px;
+  min-height: 38px;
   font-family: 'Press Start 2P', monospace;
   font-size: 10px;
   border-bottom: 2px solid;
