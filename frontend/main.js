@@ -118,6 +118,26 @@ document.getElementById('btn-linenum').addEventListener('click', () => {
   applyLineNumbers(!lineNumbersOn);
 });
 
+// ── Help dialog ───────────────────────────────────
+document.getElementById('btn-help').addEventListener('click', () => {
+  document.getElementById('help-overlay').removeAttribute('hidden');
+});
+
+document.getElementById('btn-help-close').addEventListener('click', () => {
+  document.getElementById('help-overlay').setAttribute('hidden', '');
+});
+
+document.getElementById('help-overlay').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) {
+    e.currentTarget.setAttribute('hidden', '');
+  }
+});
+
+document.getElementById('help-github').addEventListener('click', (e) => {
+  e.preventDefault();
+  window.runtime.BrowserOpenURL('https://github.com/cyuvop/vibemd');
+});
+
 // ── Manual refresh ────────────────────────────────
 document.getElementById('btn-refresh').addEventListener('click', () => {
   showBusy();

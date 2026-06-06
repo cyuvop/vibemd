@@ -15,7 +15,18 @@
   <header class="titlebar">
     <span class="titlebar-brand">▓▒░ VIBE·MD ░▒▓</span>
     <span class="titlebar-file" id="titlebar-filename">no file open</span>
+    <button class="titlebar-help-btn" id="btn-help" title="Help">?</button>
   </header>
+
+  <div id="help-overlay" aria-modal="true" role="dialog" hidden>
+    <div class="help-dialog">
+      <img src="/images/appicon.png" alt="vibemd logo" class="help-logo" />
+      <p class="help-title">▓▒░ VIBE·MD ░▒▓</p>
+      <p class="help-tagline">Markdown viewer for AI tools</p>
+      <a class="help-link" id="help-github" href="#">github.com/cyuvop/vibemd</a>
+      <button class="nes-btn help-close-btn" id="btn-help-close">CLOSE</button>
+    </div>
+  </div>
 
   <div id="busy-overlay" aria-hidden="true">
     <div class="busy-box">

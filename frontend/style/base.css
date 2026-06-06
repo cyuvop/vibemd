@@ -41,7 +41,25 @@ body {
 
 .titlebar button {
   -webkit-app-region: no-drag;
+}
+
+.titlebar-help-btn {
   margin-left: auto;
+  background: none;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.titlebar-help-btn:hover {
+  background: var(--accent);
+  color: #000;
 }
 
 .titlebar-brand {
@@ -99,6 +117,68 @@ body {
   background: none;
   color: var(--accent);
   border-color: var(--accent);
+}
+
+/* ── Help dialog ───────────────────────────────── */
+#help-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+#help-overlay[hidden] { display: none; }
+
+.help-dialog {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 32px 40px;
+  border: 2px solid var(--accent);
+  background: var(--surface);
+  min-width: 280px;
+  text-align: center;
+}
+
+.help-logo {
+  width: 96px;
+  height: 96px;
+  image-rendering: pixelated;
+  border: 2px solid var(--border);
+}
+
+.help-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  color: var(--accent);
+  margin: 0;
+}
+
+.help-tagline {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.help-link {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: var(--link);
+  text-decoration: none;
+  border-bottom: 1px solid var(--link);
+  cursor: pointer;
+}
+
+.help-link:hover { opacity: 0.75; }
+
+.help-close-btn {
+  font-size: 8px;
+  margin-top: 8px;
+  padding: 6px 16px;
 }
 
 /* ── Busy overlay ──────────────────────────────── */
