@@ -1,18 +1,16 @@
 /* Light theme — Cream Paper */
-:root {
+body.light {
   --bg:       #FFF9E6;
   --surface:  #FFFDF5;
   --border:   #1a1a1a;
   --text:     #1a1a1a;
   --accent:   #C41230;
   --heading:  #000000;
-  --code-bg:  #F0ECD8;
+  --code-bg:  #E8E0C8;
+  --code-text:#1a1a1a;
   --link:     #0000CC;
-  --muted:    #666666;
-  --scrollbar:#C41230;
-}
+  --muted:    #555555;
 
-body.light {
   background: var(--bg);
   color: var(--text);
 }

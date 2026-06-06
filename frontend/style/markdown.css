@@ -51,6 +51,7 @@
   font-family: 'JetBrains Mono', 'Courier New', monospace;
   font-size: 0.875em;
   background: var(--code-bg);
+  color: var(--code-text);
   padding: 2px 5px;
   border: 1px solid var(--border);
 }
