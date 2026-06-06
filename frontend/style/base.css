@@ -87,11 +87,17 @@ body {
   font-family: 'Press Start 2P', monospace;
   font-size: 7px;
   -webkit-app-region: no-drag;
+  color: inherit;
+}
+
+.status-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .status-btn.active {
-  background: var(--accent);
-  color: #000000;
+  background: none;
+  color: var(--accent);
   border-color: var(--accent);
 }
 

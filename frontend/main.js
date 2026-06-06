@@ -8,7 +8,9 @@ let currentTheme = localStorage.getItem('vibemd-theme') || 'dark';
 function applyTheme(theme) {
   currentTheme = theme;
   document.body.className = theme;
-  document.getElementById('btn-theme').textContent = theme.toUpperCase();
+  const btn = document.getElementById('btn-theme');
+  btn.textContent = theme.toUpperCase();
+  btn.classList.toggle('active', theme === 'light');
   localStorage.setItem('vibemd-theme', theme);
 }
 
@@ -79,7 +81,9 @@ function assignLineNumbers() {
 function applyLineNumbers(on) {
   lineNumbersOn = on;
   document.body.classList.toggle('line-numbers', on);
-  document.getElementById('btn-linenum').classList.toggle('active', on);
+  const btn = document.getElementById('btn-linenum');
+  btn.textContent = on ? 'LN ON' : '# LN';
+  btn.classList.toggle('active', on);
   localStorage.setItem('vibemd-linenum', on);
   assignLineNumbers();
 }
