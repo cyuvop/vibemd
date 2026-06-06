@@ -7,13 +7,15 @@ import (
 	"strings"
 
 	"github.com/cyuvop/vibemd/renderer"
+	"github.com/cyuvop/vibemd/watcher"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App holds runtime state and is bound to the Wails frontend.
 type App struct {
-	ctx      context.Context
-	filePath string
+	ctx         context.Context
+	filePath    string
+	watchCancel context.CancelFunc
 }
 
 func NewApp() *App { return &App{} }
@@ -28,7 +30,14 @@ func (a *App) startup(ctx context.Context) {
 	}
 }
 
-// OpenFile reads a Markdown file, renders it, and emits an event to the frontend.
+func (a *App) shutdown(_ context.Context) {
+	if a.watchCancel != nil {
+		a.watchCancel()
+	}
+}
+
+// OpenFile reads a Markdown file, renders it, starts the file watcher,
+// and emits a markdown:rendered event to the frontend.
 func (a *App) OpenFile(path string) error {
 	abs, err := filepath.Abs(path)
 	if err != nil {
@@ -38,8 +47,24 @@ func (a *App) OpenFile(path string) error {
 	if err != nil {
 		return err
 	}
+
+	// Cancel any existing watcher
+	if a.watchCancel != nil {
+		a.watchCancel()
+	}
+
 	a.filePath = abs
 	a.emitRender(abs, data)
+
+	// Start watching for changes
+	watchCtx, cancel := context.WithCancel(a.ctx)
+	a.watchCancel = cancel
+	go func() {
+		_ = watcher.Watch(watchCtx, abs, func(p string, d []byte) {
+			a.emitRender(p, d)
+		})
+	}()
+
 	return nil
 }
 
@@ -73,7 +98,7 @@ func (a *App) GetCurrentFile() map[string]interface{} {
 	}
 }
 
-// GetRenderedHTML returns the sanitized HTML for the current file.
+// GetRenderedHTML returns sanitized HTML for the current file (used by MCP).
 func (a *App) GetRenderedHTML() string {
 	if a.filePath == "" {
 		return ""
@@ -88,7 +113,7 @@ func (a *App) GetRenderedHTML() string {
 // GetFilePath returns the currently open file path.
 func (a *App) GetFilePath() string { return a.filePath }
 
-// SetTheme emits a theme-change event (also callable from MCP).
+// SetTheme emits a theme-change event (callable from MCP and frontend).
 func (a *App) SetTheme(theme string) {
 	if theme != "light" && theme != "dark" {
 		return
@@ -96,7 +121,7 @@ func (a *App) SetTheme(theme string) {
 	runtime.EventsEmit(a.ctx, "theme:changed", theme)
 }
 
-// GetTOC parses headings from the current file and returns a structured list.
+// GetTOC extracts headings from the current file as a structured list.
 func (a *App) GetTOC() []map[string]interface{} {
 	if a.filePath == "" {
 		return nil
