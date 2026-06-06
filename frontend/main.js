@@ -21,6 +21,7 @@ function onMarkdownRendered(data) {
     (data.wordCount || 0) + ' words';
   document.title = 'VIBEMD > ' + (data.filename || '');
   window.scrollTo(0, 0);
+  assignLineNumbers();
 }
 
 function scrollToHeading(text) {
@@ -49,12 +50,37 @@ document.getElementById('btn-theme').addEventListener('click', toggleTheme);
 // ── Line numbers ──────────────────────────────────
 let lineNumbersOn = localStorage.getItem('vibemd-linenum') === 'true';
 
+function assignLineNumbers() {
+  const content = document.getElementById('content');
+  // Remove any existing numbers first
+  content.querySelectorAll('.ln-num').forEach(s => s.remove());
+  if (!lineNumbersOn) return;
+
+  let n = 0;
+  const stamp = (el) => {
+    const s = document.createElement('span');
+    s.className = 'ln-num';
+    s.textContent = ++n;
+    el.prepend(s);
+  };
+
+  for (const el of content.children) {
+    const tag = el.tagName.toLowerCase();
+    if (tag === 'hr') continue;                       // structural, not a content line
+    if (tag === 'ul' || tag === 'ol') {
+      el.querySelectorAll(':scope > li').forEach(stamp); // each bullet = its own number
+    } else {
+      stamp(el);
+    }
+  }
+}
+
 function applyLineNumbers(on) {
   lineNumbersOn = on;
   document.body.classList.toggle('line-numbers', on);
-  const btn = document.getElementById('btn-linenum');
-  btn.classList.toggle('active', on);
+  document.getElementById('btn-linenum').classList.toggle('active', on);
   localStorage.setItem('vibemd-linenum', on);
+  assignLineNumbers();
 }
 
 document.getElementById('btn-linenum').addEventListener('click', () => {

@@ -116,22 +116,19 @@
 
 /* ── Line numbers ───────────────────────────────── */
 
-/* Counter lives on the content wrapper; no padding changes = no layout shift */
-body.line-numbers .markdown-body {
-  counter-reset: ln;
+/* position:relative anchors the injected .ln-num span */
+body.line-numbers .markdown-body > *,
+body.line-numbers .markdown-body > ul > li,
+body.line-numbers .markdown-body > ol > li {
+  position: relative;
 }
 
-body.line-numbers .markdown-body > * {
-  counter-increment: ln;
-  position: relative; /* anchor for ::before */
-}
-
-/* Numbers float in the existing 48px left padding of #content,
-   aligned under the macOS traffic-light button area (~0–48px) */
-body.line-numbers .markdown-body > *::before {
-  content: counter(ln);
+/* The span itself — floats in the existing 48px left gutter,
+   aligned under the macOS traffic-light buttons.
+   Direct block children: left:-44px → lands at ~4px from content edge.
+   List items (ul adds 24px indent): left:-68px → same ~4px column. */
+.ln-num {
   position: absolute;
-  left: -44px;
   width: 36px;
   text-align: right;
   font-family: 'JetBrains Mono', 'Courier New', monospace;
@@ -141,6 +138,10 @@ body.line-numbers .markdown-body > *::before {
   user-select: none;
   pointer-events: none;
 }
+
+body.line-numbers .markdown-body > * > .ln-num          { left: -44px; }
+body.line-numbers .markdown-body > ul > li > .ln-num,
+body.line-numbers .markdown-body > ol > li > .ln-num    { left: -68px; }
 
 /* ── Scanline overlay ───────────────────────────── */
 body.dark #content::after {
