@@ -2,3 +2,5 @@ build/bin/
 dist/
 frontend/fonts/*.ttf
 frontend/fonts/*.woff*
+*.DS_Store
+build/darwin/Info.dev.plist

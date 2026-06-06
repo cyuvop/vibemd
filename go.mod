@@ -3,7 +3,6 @@ module github.com/cyuvop/vibemd
 go 1.22.0
 
 require (
-	github.com/alecthomas/chroma/v2 v2.14.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/wailsapp/wails/v2 v2.12.0
@@ -13,6 +12,7 @@ require (
 
 require (
 	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 // indirect
+	github.com/alecthomas/chroma/v2 v2.14.0 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/dlclark/regexp2 v1.11.0 // indirect
