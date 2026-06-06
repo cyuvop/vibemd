@@ -10,6 +10,7 @@ body.dark {
   --code-text:#00FF41;
   --link:     #39FF14;
   --muted:    #555555;
+  --ln-color: rgba(0, 255, 65, 0.4);
 
   background: var(--bg);
   color: var(--text);

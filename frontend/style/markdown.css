@@ -115,27 +115,29 @@
 }
 
 /* ── Line numbers ───────────────────────────────── */
+
+/* Counter lives on the content wrapper; no padding changes = no layout shift */
 body.line-numbers .markdown-body {
   counter-reset: ln;
 }
 
 body.line-numbers .markdown-body > * {
   counter-increment: ln;
-  position: relative;
-  padding-left: 3.5em;
+  position: relative; /* anchor for ::before */
 }
 
+/* Numbers float in the existing 48px left padding of #content,
+   aligned under the macOS traffic-light button area (~0–48px) */
 body.line-numbers .markdown-body > *::before {
   content: counter(ln);
   position: absolute;
-  left: 0;
-  width: 2.8em;
+  left: -44px;
+  width: 36px;
   text-align: right;
   font-family: 'JetBrains Mono', 'Courier New', monospace;
-  font-size: 0.72em;
+  font-size: 0.7em;
   line-height: 1.7;
-  color: var(--muted);
-  opacity: 0.45;
+  color: var(--ln-color);
   user-select: none;
   pointer-events: none;
 }
