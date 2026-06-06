@@ -46,6 +46,21 @@ function toggleTheme() {
 
 document.getElementById('btn-theme').addEventListener('click', toggleTheme);
 
+// ── Line numbers ──────────────────────────────────
+let lineNumbersOn = localStorage.getItem('vibemd-linenum') === 'true';
+
+function applyLineNumbers(on) {
+  lineNumbersOn = on;
+  document.body.classList.toggle('line-numbers', on);
+  const btn = document.getElementById('btn-linenum');
+  btn.classList.toggle('active', on);
+  localStorage.setItem('vibemd-linenum', on);
+}
+
+document.getElementById('btn-linenum').addEventListener('click', () => {
+  applyLineNumbers(!lineNumbersOn);
+});
+
 // Boot
 window.addEventListener('load', () => {
   applyTheme(currentTheme);
@@ -55,5 +70,6 @@ window.addEventListener('load', () => {
   window.runtime.EventsOn('markdown:rendered', onMarkdownRendered);
   window.runtime.EventsOn('theme:changed', applyTheme);
 
+  applyLineNumbers(lineNumbersOn);
   window.go.main.App.Ready();
 });

@@ -114,6 +114,32 @@
   accent-color: var(--accent);
 }
 
+/* ── Line numbers ───────────────────────────────── */
+body.line-numbers .markdown-body {
+  counter-reset: ln;
+}
+
+body.line-numbers .markdown-body > * {
+  counter-increment: ln;
+  position: relative;
+  padding-left: 3.5em;
+}
+
+body.line-numbers .markdown-body > *::before {
+  content: counter(ln);
+  position: absolute;
+  left: 0;
+  width: 2.8em;
+  text-align: right;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 0.72em;
+  line-height: 1.7;
+  color: var(--muted);
+  opacity: 0.45;
+  user-select: none;
+  pointer-events: none;
+}
+
 /* ── Scanline overlay ───────────────────────────── */
 body.dark #content::after {
   content: '';

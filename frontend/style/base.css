@@ -81,6 +81,20 @@ body {
   border: 1px solid;
 }
 
+.status-btn {
+  background: none;
+  cursor: pointer;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  -webkit-app-region: no-drag;
+}
+
+.status-btn.active {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+
 /* ── Splash screen ─────────────────────────────── */
 .splash {
   text-align: center;
