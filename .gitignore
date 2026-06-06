@@ -1,0 +1,4 @@
+build/bin/
+dist/
+frontend/fonts/*.ttf
+frontend/fonts/*.woff*

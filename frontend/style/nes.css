@@ -1,0 +1,42 @@
+/*
+ * NES.css v2.3.6 — minimal subset for vibemd
+ * Source: https://github.com/nostalgic-css/NES.css (MIT License)
+ * Inlined to avoid CDN dependency (security requirement).
+ */
+
+/* Pixel border mixin via box-shadow */
+.nes-btn {
+  display: inline-block;
+  position: relative;
+  padding: 6px 16px;
+  font-size: 10px;
+  font-family: 'Press Start 2P', monospace;
+  cursor: pointer;
+  border: none;
+  outline: none;
+
+  /* Simulate pixelated border with box-shadow */
+  box-shadow:
+    inset -4px -4px 0 rgba(0,0,0,0.35),
+    inset 4px 4px 0 rgba(255,255,255,0.15);
+}
+
+.nes-btn:active {
+  box-shadow:
+    inset -2px -2px 0 rgba(0,0,0,0.35),
+    inset 2px 2px 0 rgba(255,255,255,0.15);
+  transform: translate(2px, 2px);
+}
+
+.nes-text.is-primary { color: #209cee; }
+.nes-text.is-success { color: #92cc41; }
+.nes-text.is-warning { color: #f7d51d; }
+.nes-text.is-error   { color: #e76e55; }
+
+.nes-badge {
+  display: inline-block;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  padding: 2px 6px;
+  border: 2px solid;
+}

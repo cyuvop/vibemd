@@ -1,0 +1,46 @@
+/* Light theme — Cream Paper */
+:root {
+  --bg:       #FFF9E6;
+  --surface:  #FFFDF5;
+  --border:   #1a1a1a;
+  --text:     #1a1a1a;
+  --accent:   #C41230;
+  --heading:  #000000;
+  --code-bg:  #F0ECD8;
+  --link:     #0000CC;
+  --muted:    #666666;
+  --scrollbar:#C41230;
+}
+
+body.light {
+  background: var(--bg);
+  color: var(--text);
+}
+
+body.light .titlebar {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--border);
+}
+
+body.light .statusbar {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--muted);
+}
+
+body.light .status-chip {
+  border-color: var(--border);
+  color: var(--accent);
+}
+
+body.light ::-webkit-scrollbar-thumb {
+  background: var(--code-bg);
+  border-color: var(--border);
+}
+
+body.light .nes-btn {
+  background: var(--surface);
+  color: var(--border);
+  border-color: var(--border);
+}

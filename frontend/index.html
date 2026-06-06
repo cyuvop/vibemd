@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>vibemd</title>
+  <link rel="stylesheet" href="/style/nes.css" />
+  <link rel="stylesheet" href="/style/base.css" />
+  <link rel="stylesheet" href="/style/dark.css" id="theme-dark" />
+  <link rel="stylesheet" href="/style/light.css" id="theme-light" disabled />
+  <link rel="stylesheet" href="/style/markdown.css" />
+</head>
+<body class="dark">
+
+  <header class="titlebar">
+    <span class="titlebar-brand">▓▒░ VIBEMD ░▒▓</span>
+    <span class="titlebar-file" id="titlebar-filename">no file open</span>
+    <button class="nes-btn is-small" id="btn-theme" title="Toggle theme">◐</button>
+  </header>
+
+  <main id="content" class="markdown-body">
+    <div class="splash">
+      <p class="nes-text is-primary">VIBEMD v0.1</p>
+      <p>Open a .md file to begin.</p>
+      <p class="hint">vibemd path/to/file.md</p>
+    </div>
+  </main>
+
+  <footer class="statusbar">
+    <span class="status-chip" id="status-filename">—</span>
+    <span class="status-chip" id="status-words">0 words</span>
+    <span class="status-chip" id="status-theme">DARK</span>
+    <span class="status-chip" id="status-mcp">MCP: OFF</span>
+  </footer>
+
+  <script src="/wails/ipc.js"></script>
+  <script src="/main.js"></script>
+</body>
+</html>

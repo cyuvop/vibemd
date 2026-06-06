@@ -1,0 +1,56 @@
+'use strict';
+
+// Wails runtime is injected at /wails/ipc.js
+// All business logic lives in Go — this file is display-only glue (~60 lines).
+
+let currentTheme = localStorage.getItem('vibemd-theme') || 'dark';
+
+function applyTheme(theme) {
+  currentTheme = theme;
+  document.body.className = theme;
+  document.getElementById('status-theme').textContent = theme.toUpperCase();
+  localStorage.setItem('vibemd-theme', theme);
+}
+
+function onMarkdownRendered(data) {
+  const content = document.getElementById('content');
+  content.innerHTML = data.html;
+  document.getElementById('titlebar-filename').textContent = data.filename || '';
+  document.getElementById('status-filename').textContent = data.filename || '—';
+  document.getElementById('status-words').textContent =
+    (data.wordCount || 0) + ' words';
+  document.title = 'VIBEMD > ' + (data.filename || '');
+  window.scrollTo(0, 0);
+}
+
+function scrollToHeading(text) {
+  const headings = document.querySelectorAll('h1,h2,h3,h4,h5,h6');
+  for (const h of headings) {
+    if (h.textContent.includes(text)) {
+      h.scrollIntoView({ behavior: 'smooth' });
+      return;
+    }
+  }
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  const mod = e.metaKey || e.ctrlKey;
+  if (mod && e.key === 't') { e.preventDefault(); toggleTheme(); }
+  if (mod && e.key === 'w') { e.preventDefault(); window.go.main.App.GetFilePath().then(() => window.close()); }
+});
+
+function toggleTheme() {
+  applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+}
+
+document.getElementById('btn-theme').addEventListener('click', toggleTheme);
+
+// Boot
+window.addEventListener('load', () => {
+  applyTheme(currentTheme);
+
+  // Listen for events from Go
+  window.runtime.EventsOn('markdown:rendered', onMarkdownRendered);
+  window.runtime.EventsOn('theme:changed', applyTheme);
+});

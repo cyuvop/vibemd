@@ -1,0 +1,46 @@
+/* Dark theme — Phosphor Green */
+:root {
+  --bg:       #0d0d0d;
+  --surface:  #1a1a1a;
+  --border:   #333333;
+  --text:     #e0e0e0;
+  --accent:   #00FF41;
+  --heading:  #00FF41;
+  --code-bg:  #111111;
+  --link:     #39FF14;
+  --muted:    #555555;
+  --scrollbar:#00FF41;
+}
+
+body.dark {
+  background: var(--bg);
+  color: var(--text);
+}
+
+body.dark .titlebar {
+  background: var(--surface);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+body.dark .statusbar {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--muted);
+}
+
+body.dark .status-chip {
+  border-color: var(--border);
+  color: var(--accent);
+}
+
+body.dark ::-webkit-scrollbar-thumb {
+  background: var(--code-bg);
+  border-color: var(--accent);
+}
+
+body.dark .nes-btn {
+  background: var(--surface);
+  color: var(--accent);
+  border-color: var(--accent);
+}
