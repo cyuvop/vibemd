@@ -33,6 +33,12 @@ body.dark .status-chip {
   color: var(--accent);
 }
 
+body.dark .status-btn:hover {
+  background: rgba(0, 255, 65, 0.12);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 body.dark ::-webkit-scrollbar-thumb {
   background: var(--code-bg);
   border-color: var(--accent);

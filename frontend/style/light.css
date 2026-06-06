@@ -33,6 +33,12 @@ body.light .status-chip {
   color: var(--accent);
 }
 
+body.light .status-btn:hover {
+  background: rgba(196, 18, 48, 0.1);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 body.light ::-webkit-scrollbar-thumb {
   background: var(--code-bg);
   border-color: var(--border);
