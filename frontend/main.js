@@ -8,7 +8,7 @@ let currentTheme = localStorage.getItem('vibemd-theme') || 'dark';
 function applyTheme(theme) {
   currentTheme = theme;
   document.body.className = theme;
-  document.getElementById('status-theme').textContent = theme.toUpperCase();
+  document.getElementById('btn-theme').textContent = theme.toUpperCase();
   localStorage.setItem('vibemd-theme', theme);
 }
 
@@ -46,6 +46,7 @@ function toggleTheme() {
 }
 
 document.getElementById('btn-theme').addEventListener('click', toggleTheme);
+
 
 // ── Line numbers ──────────────────────────────────
 let lineNumbersOn = localStorage.getItem('vibemd-linenum') === 'true';

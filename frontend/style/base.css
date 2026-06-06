@@ -91,7 +91,7 @@ body {
 
 .status-btn.active {
   background: var(--accent);
-  color: var(--bg);
+  color: #000000;
   border-color: var(--accent);
 }
 
