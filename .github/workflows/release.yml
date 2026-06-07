@@ -58,7 +58,8 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          cp build/bin/vibemd-amd64-installer.exe dist/vibemd-setup.exe
+          find build/bin -name "*.exe" | tee /dev/stderr
+          cp build/bin/*installer*.exe dist/vibemd-setup.exe
       - uses: actions/upload-artifact@v4
         with:
           name: vibemd-windows
