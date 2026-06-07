@@ -50,6 +50,7 @@ function onMarkdownRendered(data) {
   document.title = 'VIBEMD > ' + (data.filename || '');
   window.scrollTo(0, 0);
   assignLineNumbers();
+  reapplySearch();
 }
 
 function scrollToHeading(text) {
@@ -65,6 +66,7 @@ function scrollToHeading(text) {
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
   const mod = e.metaKey || e.ctrlKey;
+  if (mod && e.key === 'f') { e.preventDefault(); openSearch(); }
   if (mod && e.key === 't') { e.preventDefault(); toggleTheme(); }
   if (mod && e.key === 'w') { e.preventDefault(); window.go.main.App.GetFilePath().then(() => window.close()); }
 });
@@ -148,6 +150,138 @@ function applyLineNumbers(on) {
 document.getElementById('btn-linenum').addEventListener('click', () => {
   applyLineNumbers(!lineNumbersOn);
 });
+
+// ── Search ────────────────────────────────────────
+let searchMatches = [];
+let searchIndex  = -1;
+let lastSearchTerm = '';
+let searchDebounce = null;
+
+function openSearch() {
+  document.getElementById('search-bar').removeAttribute('hidden');
+  const input = document.getElementById('search-input');
+  input.focus();
+  input.select();
+}
+
+function closeSearch() {
+  document.getElementById('search-bar').setAttribute('hidden', '');
+  clearMarks();
+  searchMatches = [];
+  searchIndex = -1;
+  lastSearchTerm = '';
+  document.getElementById('search-input').value = '';
+  document.getElementById('search-count').textContent = '';
+}
+
+function clearMarks() {
+  document.querySelectorAll('.search-match').forEach(m => {
+    const parent = m.parentNode;
+    if (parent) {
+      parent.replaceChild(document.createTextNode(m.textContent), m);
+      parent.normalize();
+    }
+  });
+}
+
+function escapeRegex(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function runSearch(term) {
+  clearMarks();
+  searchMatches = [];
+  searchIndex = -1;
+  lastSearchTerm = term;
+
+  if (!term) { updateSearchCount(); return; }
+
+  const content = document.getElementById('content');
+  const re = new RegExp(escapeRegex(term), 'gi');
+
+  // Collect text nodes first (can't mutate DOM while walking)
+  const textNodes = [];
+  const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
+  let node;
+  while ((node = walker.nextNode())) {
+    if (node.textContent.toLowerCase().includes(term.toLowerCase())) {
+      textNodes.push(node);
+    }
+  }
+
+  textNodes.forEach(textNode => {
+    const text = textNode.textContent;
+    const fragment = document.createDocumentFragment();
+    let last = 0, match;
+    re.lastIndex = 0;
+
+    while ((match = re.exec(text)) !== null) {
+      if (match.index > last)
+        fragment.appendChild(document.createTextNode(text.slice(last, match.index)));
+      const mark = document.createElement('mark');
+      mark.className = 'search-match';
+      mark.textContent = match[0];
+      fragment.appendChild(mark);
+      searchMatches.push(mark);
+      last = match.index + match[0].length;
+    }
+    if (last < text.length)
+      fragment.appendChild(document.createTextNode(text.slice(last)));
+
+    textNode.parentNode.replaceChild(fragment, textNode);
+  });
+
+  if (searchMatches.length > 0) { searchIndex = 0; activateCurrent(); }
+  updateSearchCount();
+}
+
+function activateCurrent() {
+  searchMatches.forEach((m, i) => m.classList.toggle('current', i === searchIndex));
+  if (searchMatches[searchIndex])
+    searchMatches[searchIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function searchNext() {
+  if (!searchMatches.length) return;
+  searchIndex = (searchIndex + 1) % searchMatches.length;
+  activateCurrent();
+  updateSearchCount();
+}
+
+function searchPrev() {
+  if (!searchMatches.length) return;
+  searchIndex = (searchIndex - 1 + searchMatches.length) % searchMatches.length;
+  activateCurrent();
+  updateSearchCount();
+}
+
+function updateSearchCount() {
+  const el = document.getElementById('search-count');
+  if (!lastSearchTerm)          { el.textContent = ''; return; }
+  if (!searchMatches.length)    { el.textContent = 'NO MATCH'; return; }
+  el.textContent = `${searchIndex + 1} / ${searchMatches.length}`;
+}
+
+// Re-apply search after content is re-rendered
+function reapplySearch() {
+  if (lastSearchTerm && !document.getElementById('search-bar').hidden) {
+    runSearch(lastSearchTerm);
+  }
+}
+
+document.getElementById('search-input').addEventListener('input', (e) => {
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(() => runSearch(e.target.value.trim()), 120);
+});
+
+document.getElementById('search-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter')  { e.preventDefault(); e.shiftKey ? searchPrev() : searchNext(); }
+  if (e.key === 'Escape') { closeSearch(); }
+});
+
+document.getElementById('search-next').addEventListener('click', searchNext);
+document.getElementById('search-prev').addEventListener('click', searchPrev);
+document.getElementById('search-close').addEventListener('click', closeSearch);
 
 // ── Help dialog ───────────────────────────────────
 document.getElementById('btn-help').addEventListener('click', () => {

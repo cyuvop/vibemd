@@ -129,6 +129,74 @@ body {
   border-color: var(--accent);
 }
 
+/* ── Search bar ────────────────────────────────── */
+#search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 2px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+#search-bar[hidden] { display: none; }
+
+#search-input {
+  flex: 1;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  outline: none;
+  min-width: 0;
+}
+
+#search-input:focus { border-color: var(--accent); }
+
+#search-count {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: var(--muted);
+  white-space: nowrap;
+  min-width: 60px;
+  text-align: right;
+}
+
+.search-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--accent);
+  font-size: 10px;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  line-height: 1;
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
+}
+
+.search-btn:hover {
+  background: rgba(var(--accent), 0.1);
+  border-color: var(--accent);
+}
+
+/* ── Search match highlights ───────────────────── */
+.search-match {
+  background: rgba(255, 220, 0, 0.35);
+  color: inherit;
+  border-radius: 0;
+  outline: 1px solid rgba(255, 220, 0, 0.6);
+}
+
+.search-match.current {
+  background: var(--accent);
+  color: #000;
+  outline-color: var(--accent);
+}
+
 /* ── Help dialog ───────────────────────────────── */
 #help-overlay {
   position: fixed;
