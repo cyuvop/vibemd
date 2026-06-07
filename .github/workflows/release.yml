@@ -54,6 +54,11 @@ jobs:
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
       - name: Build NSIS installer
         run: ~/go/bin/wails build -platform windows/amd64 -clean -nsis
+      - name: Stage installer
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp build/bin/vibemd-amd64-installer.exe dist/vibemd-setup.exe
       - uses: actions/upload-artifact@v4
         with:
           name: vibemd-windows
