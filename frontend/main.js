@@ -76,13 +76,35 @@ function toggleTheme() {
 document.getElementById('btn-theme').addEventListener('click', toggleTheme);
 
 // ── Title bar drag ────────────────────────────────
-// -webkit-app-region:drag loses state in WKWebView after first drag.
-// Use Wails' native drag API instead: reliable across all drags.
-document.querySelector('.titlebar').addEventListener('mousedown', (e) => {
-  if (e.button !== 0) return;              // left button only
-  if (e.target.closest('button')) return;  // let buttons handle their own clicks
-  window.runtime.WindowStartDragging();
-});
+// Both -webkit-app-region:drag and WindowStartDragging() have a WKWebView
+// bug where they stop working after the first drag. Manual drag via
+// WindowGetPosition / WindowSetPosition is the only reliable approach.
+{
+  let dragging = false;
+  let startScreenX = 0, startScreenY = 0;
+  let winX = 0, winY = 0;
+
+  document.querySelector('.titlebar').addEventListener('mousedown', async (e) => {
+    if (e.button !== 0 || e.target.closest('button')) return;
+    e.preventDefault();
+    const pos = await window.runtime.WindowGetPosition();
+    winX = pos.x;
+    winY = pos.y;
+    startScreenX = e.screenX;
+    startScreenY = e.screenY;
+    dragging = true;
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    window.runtime.WindowSetPosition(
+      winX + (e.screenX - startScreenX),
+      winY + (e.screenY - startScreenY)
+    );
+  });
+
+  window.addEventListener('mouseup', () => { dragging = false; });
+}
 
 
 // ── Line numbers ──────────────────────────────────
