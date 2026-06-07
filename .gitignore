@@ -9,3 +9,4 @@ build/darwin/Info.dev.plist
 .idea/
 *.iml
 .vscode/
+*.swift
