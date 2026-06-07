@@ -50,16 +50,28 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with: { go-version: 'stable', check-latest: true }
-      - name: Install Wails
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+      - name: Install Wails and NSIS
+        shell: bash
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@latest
+          choco install nsis --yes --no-progress
+          echo "C:/Program Files (x86)/NSIS" >> $GITHUB_PATH
       - name: Build NSIS installer
+        shell: bash
         run: ~/go/bin/wails build -platform windows/amd64 -clean -nsis
       - name: Stage installer
         shell: bash
         run: |
           mkdir -p dist
-          find build/bin -name "*.exe" | tee /dev/stderr
-          cp build/bin/*installer*.exe dist/vibemd-setup.exe
+          echo "build/bin contents:" && ls build/bin/
+          installer=$(find build/bin -name "*installer*.exe" | head -1)
+          if [ -z "$installer" ]; then
+            echo "No installer found, zipping binary instead"
+            cp build/bin/vibemd.exe dist/
+            cd dist && 7z a vibemd-windows.zip vibemd.exe && cd ..
+          else
+            cp "$installer" dist/vibemd-setup.exe
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: vibemd-windows
@@ -77,3 +89,4 @@ jobs:
           files: |
             vibemd-mac/vibemd-mac.dmg
             vibemd-windows/vibemd-setup.exe
+            vibemd-windows/vibemd-windows.zip
