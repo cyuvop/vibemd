@@ -17,20 +17,25 @@ import (
 var assets embed.FS
 
 func main() {
-	// Collect the first non-flag argument as the file to open.
+	// Collect flags and the first non-flag argument as the file to open.
 	var fileArg string
+	var newWindow bool
 	for _, arg := range os.Args[1:] {
-		if arg == "--mcp" {
+		switch arg {
+		case "--mcp":
 			runMCPServer()
 			return
-		}
-		if !strings.HasPrefix(arg, "-") && fileArg == "" {
-			fileArg = arg
+		case "--new-window":
+			newWindow = true
+		default:
+			if !strings.HasPrefix(arg, "-") && fileArg == "" {
+				fileArg = arg
+			}
 		}
 	}
 
-	// If another vibemd is already running, hand the file to it and exit.
-	if tryDelegate(fileArg) {
+	// Without --new-window, hand the file to any running instance and exit.
+	if !newWindow && tryDelegate(fileArg) {
 		return
 	}
 
@@ -46,7 +51,11 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 13, G: 13, B: 13, A: 255},
 		OnStartup: func(ctx context.Context) {
 			app.startup(ctx)
-			listenForFiles(app)
+			// Only the primary instance owns the IPC socket.
+			// --new-window instances are independent and don't steal it.
+			if !newWindow {
+				listenForFiles(app)
+			}
 		},
 		OnShutdown: app.shutdown,
 		Bind:             []interface{}{app},
