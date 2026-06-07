@@ -37,10 +37,19 @@ body {
   border-bottom: 2px solid;
   flex-shrink: 0;
   -webkit-app-region: drag;
+  /* Prevent text selection from interfering with window drag */
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .titlebar button {
   -webkit-app-region: no-drag;
+}
+
+/* Text spans are display-only — let mouse events pass through to the drag region */
+.titlebar-brand,
+.titlebar-file {
+  pointer-events: none;
 }
 
 .titlebar-help-btn {
