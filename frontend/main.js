@@ -75,6 +75,15 @@ function toggleTheme() {
 
 document.getElementById('btn-theme').addEventListener('click', toggleTheme);
 
+// ── Title bar drag ────────────────────────────────
+// -webkit-app-region:drag loses state in WKWebView after first drag.
+// Use Wails' native drag API instead: reliable across all drags.
+document.querySelector('.titlebar').addEventListener('mousedown', (e) => {
+  if (e.button !== 0) return;              // left button only
+  if (e.target.closest('button')) return;  // let buttons handle their own clicks
+  window.runtime.WindowStartDragging();
+});
+
 
 // ── Line numbers ──────────────────────────────────
 let lineNumbersOn = localStorage.getItem('vibemd-linenum') === 'true';

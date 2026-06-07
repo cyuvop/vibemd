@@ -36,10 +36,11 @@ body {
   font-size: 10px;
   border-bottom: 2px solid;
   flex-shrink: 0;
-  -webkit-app-region: drag;
-  /* Prevent text selection from interfering with window drag */
+  /* Dragging is handled via window.runtime.WindowStartDragging() in main.js
+     because -webkit-app-region:drag loses state in WKWebView after first drag */
   -webkit-user-select: none;
   user-select: none;
+  cursor: default;
 }
 
 .titlebar button {
