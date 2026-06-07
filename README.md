@@ -50,14 +50,21 @@
 
 Download `vibemd-mac.dmg` from [Releases](https://github.com/cyuvop/vibemd/releases), open it, and drag **vibemd** to Applications.
 
-**First launch — Gatekeeper prompt:** vibemd is not yet notarized with Apple (requires a paid Developer ID). macOS will block it on first open. To allow it:
+**First launch — Gatekeeper:** vibemd is not yet notarized with Apple. macOS will show _"Apple could not verify vibemd is free of malware"_. Use one of these three bypass methods (one-time only):
 
-> **System Settings → Privacy & Security → scroll down → "vibemd was blocked" → Open Anyway**
+**Option A — System Settings (recommended):**
+1. Try to open vibemd — macOS blocks it
+2. Open **System Settings → Privacy & Security**
+3. Scroll down to the _"vibemd was blocked"_ message
+4. Click **Open Anyway** → **Open**
 
-Or from the terminal (one-time, permanent):
+**Option B — Terminal (permanent, no more prompts ever):**
 ```bash
 xattr -rd com.apple.quarantine /Applications/vibemd.app
 ```
+
+**Option C — Right-click bypass:**
+Right-click `vibemd.app` in Finder → **Open** → click **Open** in the dialog
 
 To set as the default Markdown reader:
 1. Right-click any `.md` file in Finder

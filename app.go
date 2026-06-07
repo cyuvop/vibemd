@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +11,9 @@ import (
 	"github.com/cyuvop/vibemd/watcher"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+//go:embed README.md
+var builtinReadme []byte
 
 // App holds runtime state and is bound to the Wails frontend.
 type App struct {
@@ -27,11 +31,13 @@ func (a *App) startup(ctx context.Context) {
 	// Ready() clears this and flushes the cached payload.
 	a.pendingRender = map[string]interface{}{}
 	for _, arg := range os.Args[1:] {
-		if arg != "--mcp" && !strings.HasPrefix(arg, "-") {
+		if arg != "--mcp" && arg != "--new-window" && !strings.HasPrefix(arg, "-") {
 			_ = a.OpenFile(arg)
 			return
 		}
 	}
+	// No file argument — show the built-in README as the welcome screen.
+	a.emitRender("README.md", builtinReadme)
 }
 
 // Ready is called by the frontend once its event listeners are registered.
