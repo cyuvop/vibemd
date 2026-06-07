@@ -53,7 +53,7 @@ jobs:
           codesign --deep --force --verify --verbose \
             --sign "$IDENTITY" \
             --options runtime \
-            --entitlements /dev/null \
+            --entitlements build/darwin/entitlements.plist \
             build/bin/vibemd.app
 
       - name: Notarize
