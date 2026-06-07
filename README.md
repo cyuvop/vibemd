@@ -11,10 +11,12 @@
 - **Instant rendering** — goldmark GFM renderer with syntax highlighting, tables, task lists, and strikethrough
 - **8-bit aesthetic** — Press Start 2P headings, NES.css pixel borders, phosphor green dark mode, cream paper light mode
 - **Live auto-refresh** — fsnotify watches the open file; changes from any editor appear immediately
-- **Multi-file support** — `vibemd file.md` switches a running instance to a new file without opening a second window
+- **Search** — `Cmd+F` full-text search with highlighted matches and forward/backward navigation
+- **Multi-window** — `vibemd file.md` switches the running instance; `--new-window` opens an independent second window
+- **Built-in welcome** — opens with the README when no file is specified
 - **MCP server** — 6 tools over stdio; registers with Claude Code in one command
 - **Secure by design** — all rendering happens in Go (bluemonday sanitization), no CDN scripts, no relay servers, no npm
-- **Single-file distribution** — macOS universal DMG and Windows NSIS installer, both self-contained
+- **Single-file distribution** — macOS universal DMG and Windows zip, both self-contained
 
 ---
 
@@ -22,7 +24,9 @@
 
 ```
 ┌────────────────────────────────────────────────────────┐
-│ ▓▒░ VIBE·MD ░▒▓   README.md (/path/to/README.md)   [?]│  ← title bar
+│ ▓▒░ VIBE·MD ░▒▓   README.md (/path/to/README.md)   [?]│  ← title bar (drag to move)
+├────────────────────────────────────────────────────────┤
+│ SEARCH...                        3 / 12  ◄  ►  ✕      │  ← Cmd+F search bar
 ├────────────────────────────────────────────────────────┤
 │                                                        │
 │  █ H1 Heading                                          │  ← 8-bit heading
@@ -35,7 +39,7 @@
 │  └─────────────────────────────┘                       │
 │                                                        │
 ├────────────────────────────────────────────────────────┤
-│ README.md │ 412 words │ DARK │ MCP: OFF │ # LN │ ↺ SYNC│  ← status bar
+│ README.md │ 412 words │ DARK │ # LN │ ↺ SYNC          │  ← status bar
 └────────────────────────────────────────────────────────┘
 ```
 
@@ -72,11 +76,11 @@ To set as the default Markdown reader:
 
 ### Windows
 
-Download `vibemd-setup.exe` from [Releases](https://github.com/cyuvop/vibemd/releases) and run it. The installer:
-- Places vibemd in `%PROGRAMFILES%\vibemd\`
-- Registers `.md` and `.markdown` file associations
-- Creates a Start Menu shortcut
-- Installs WebView2 if not already present (Windows 11 ships with it)
+Download `vibemd-windows.zip` from [Releases](https://github.com/cyuvop/vibemd/releases), extract it, and run `vibemd.exe`.
+
+To add vibemd to your PATH so you can run it from the terminal:
+1. Move `vibemd.exe` to a folder like `C:\Tools\`
+2. Add that folder to your system PATH via System Properties → Environment Variables
 
 ---
 
@@ -90,26 +94,40 @@ vibemd README.md
 vibemd /path/to/any/file.md
 ```
 
-**From Finder:** Double-click any `.md` file (if vibemd is set as default), or right-click → **Open With** → vibemd.
+**No file specified** — vibemd opens with this README as the welcome screen.
 
-**From another app:** Use "Open With" in any file browser or editor.
+**From Finder / File Explorer:** Double-click any `.md` file (if vibemd is set as default), or right-click → **Open With** → vibemd.
 
-### Switching files in a running instance
-
-vibemd is single-window by design. When an instance is already open, calling it with a new file switches the content without opening a second window:
+### Multiple windows
 
 ```bash
-vibemd DESIGN.md        # opens vibemd
-vibemd AGENTS.md        # switches to AGENTS.md — same window, instant
-vibemd CHANGELOG.md     # switches again
+vibemd DESIGN.md               # opens / switches the primary window
+vibemd AGENTS.md               # switches primary window to AGENTS.md
+vibemd --new-window AGENTS.md  # opens AGENTS.md in a new independent window
 ```
 
-This uses a Unix socket (`$TMPDIR/vibemd.sock`) so the second invocation exits in milliseconds after handing off the path.
+`vibemd file.md` uses a Unix socket to hand the file to any running instance in milliseconds. `--new-window` bypasses this and always launches a fresh window.
+
+### Search
+
+Press **`Cmd+F`** (Mac) or **`Ctrl+F`** (Windows) to open the search bar:
+
+- Type to highlight all matches — current match in accent colour, others in yellow
+- **`Enter`** — next match
+- **`Shift+Enter`** — previous match
+- **`◄` / `►`** buttons — navigate with the mouse
+- Counter shows `3 / 12` style, or `NO MATCH` when nothing is found
+- **`Escape`** — close search and clear highlights
+- Search re-applies automatically when the file reloads
 
 ### Keyboard shortcuts
 
 | Shortcut | Action |
 |----------|--------|
+| `Cmd/Ctrl + F` | Open search |
+| `Enter` (in search) | Next match |
+| `Shift + Enter` (in search) | Previous match |
+| `Escape` (in search) | Close search |
 | `Cmd/Ctrl + T` | Toggle light / dark theme |
 | `Cmd/Ctrl + W` | Close window |
 
@@ -117,19 +135,17 @@ This uses a Unix socket (`$TMPDIR/vibemd.sock`) so the second invocation exits i
 
 | Button | Action |
 |--------|--------|
-| `DARK` / `LIGHT` | Toggle theme |
-| `# LN` / `LN ON` | Toggle line numbers |
-| `↺ SYNC` | Manually reload the file |
-
-Line numbers are non-selectable, float in the left gutter (under the macOS traffic-light buttons), and cause no layout shift when toggled.
+| `DARK` / `LIGHT` | Toggle theme — hover highlights in accent colour |
+| `# LN` / `LN ON` | Toggle line numbers in left gutter |
+| `↺ SYNC` | Manually reload the file from disk |
 
 ### Auto-refresh
 
-vibemd watches the open file with fsnotify. Save the file in any editor and the viewer updates instantly — a loading spinner appears during the re-render.
+vibemd watches the open file with fsnotify. Save the file in any editor and the viewer updates instantly — a brief loading spinner appears during re-render.
 
 ### Help dialog
 
-Click **?** in the top-right of the title bar to see the app icon, version, and link to this repository.
+Click **?** in the top-right of the title bar to see the app icon, version, and a link to this repository.
 
 ---
 
@@ -151,7 +167,7 @@ claude mcp list
 
 ### Register with other MCP clients (Cursor, Cline, Continue, Windsurf)
 
-Add to your MCP config file (`~/.cursor/mcp.json`, `.clinerules`, etc.):
+Add to your MCP config file:
 
 ```json
 {
@@ -223,22 +239,12 @@ Claude Code:
 ### Quick smoke test (no Claude required)
 
 ```bash
-# Build a test binary
 go build -o /tmp/vibemd .
 
-# Check protocol handshake
 printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}\n' \
   | /tmp/vibemd --mcp
 
-# List all tools
 printf '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}\n' \
-  | /tmp/vibemd --mcp
-
-# Open a file and read it back
-printf '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"open_file","arguments":{"path":"/path/to/file.md"}}}\n' \
-  | /tmp/vibemd --mcp
-
-printf '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"get_current_file","arguments":{}}}\n' \
   | /tmp/vibemd --mcp
 ```
 
@@ -267,41 +273,23 @@ vibemd opens arbitrary `.md` files — including AI-generated and untrusted cont
 - Go 1.22+
 - Wails v2: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
 - macOS packaging: `brew install create-dmg`
-- Windows packaging: NSIS (for the installer script)
 
 ### Commands
 
 ```bash
-# Run tests
-go test ./...
-
-# Development mode (hot reload)
-~/go/bin/wails dev
-
-# Build macOS universal binary + DMG
-make mac
-
-# Build Windows NSIS installer (run on Windows or Windows CI)
-make windows
-
-# Build both
-make all
+go test ./...          # run all tests
+~/go/bin/wails dev     # development mode with hot reload
+make mac               # build macOS universal DMG
+make windows           # build Windows zip (run on Windows)
+make all               # both
 ```
-
-Outputs:
-- `dist/vibemd-mac.dmg` — drag-to-Applications, runs on Intel + Apple Silicon
-- `dist/vibemd-setup.exe` — one-click Windows installer with WebView2 bootstrapper
 
 ### Release
 
-Tag a commit to trigger the GitHub Actions release workflow:
-
 ```bash
-git tag v0.1.0
-git push --tags
+git tag v1.0.0
+git push --tags        # triggers CI → builds both platforms → GitHub Release
 ```
-
-CI runs `govulncheck`, builds on native macOS and Windows runners, and attaches both distributables to a GitHub Release automatically.
 
 ---
 
@@ -309,24 +297,25 @@ CI runs `govulncheck`, builds on native macOS and Windows runners, and attaches 
 
 ```
 vibemd/
-├── main.go              # Entry point, single-instance IPC, Wails bootstrap
-├── app.go               # App struct, file open, watcher, Wails bindings
-├── ipc.go               # Unix socket IPC for multi-file switching
-├── mcp_stub.go          # Headless MCP state (no Wails context needed)
+├── main.go              # Entry point, --new-window, IPC, Wails bootstrap
+├── app.go               # App struct, file open, watcher, embedded README
+├── ipc.go               # Unix socket for multi-file switching
+├── mcp_stub.go          # Headless MCP state (no Wails context)
 ├── renderer/            # goldmark → bluemonday → sanitized HTML
 ├── watcher/             # fsnotify file watcher
-├── mcp/                 # JSON-RPC 2.0 stdio MCP server
-├── frontend/            # Vanilla HTML + CSS (no JS framework, no npm)
-│   ├── index.html
-│   ├── main.js          # ~100 lines of display-only Wails glue
-│   └── style/           # dark.css, light.css, markdown.css, nes.css
+├── mcp/                 # JSON-RPC 2.0 stdio MCP server (6 tools)
+├── frontend/
+│   ├── index.html       # Search bar, busy overlay, help dialog
+│   ├── main.js          # Search, drag, theme, line numbers, MCP glue
+│   └── style/           # dark.css, light.css, markdown.css, base.css, nes.css
 ├── build/
 │   ├── appicon.png      # 1024×1024 app icon
-│   ├── darwin/          # Info.plist (macOS file associations)
+│   ├── darwin/          # Info.plist (UTI file associations)
 │   └── windows/         # installer.nsi (NSIS script)
 ├── Makefile
-├── AGENTS.md            # MCP registration instructions for AI tools
-└── CLAUDE.md            # Claude Code session context
+├── AGENTS.md            # MCP registration for AI tools
+├── CLAUDE.md            # Claude Code session context
+└── DESIGN.md            # Architecture and design decisions
 ```
 
 ---
@@ -335,13 +324,15 @@ vibemd/
 
 | Layer | Technology |
 |-------|-----------|
-| App framework | [Wails v2](https://wails.io) (Go + system WebView) |
+| App framework | [Wails v2](https://wails.io) — Go + system WebView |
 | Markdown rendering | [goldmark](https://github.com/yuin/goldmark) |
 | HTML sanitization | [bluemonday](https://github.com/microcosm-cc/bluemonday) |
 | Syntax highlighting | [goldmark-highlighting](https://github.com/yuin/goldmark-highlighting) (Chroma) |
 | File watching | [fsnotify](https://github.com/fsnotify/fsnotify) |
 | 8-bit CSS | [NES.css](https://github.com/nostalgic-css/NES.css) + Press Start 2P |
 | Vulnerability scanning | [govulncheck](https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck) |
+
+Zero npm. Zero node_modules. `go build` is the only build tool for logic.
 
 ---
 
