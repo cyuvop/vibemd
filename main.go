@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -15,11 +17,21 @@ import (
 var assets embed.FS
 
 func main() {
+	// Collect the first non-flag argument as the file to open.
+	var fileArg string
 	for _, arg := range os.Args[1:] {
 		if arg == "--mcp" {
 			runMCPServer()
 			return
 		}
+		if !strings.HasPrefix(arg, "-") && fileArg == "" {
+			fileArg = arg
+		}
+	}
+
+	// If another vibemd is already running, hand the file to it and exit.
+	if tryDelegate(fileArg) {
+		return
 	}
 
 	app := NewApp()
@@ -32,8 +44,11 @@ func main() {
 			Assets: assets,
 		},
 		BackgroundColour: &options.RGBA{R: 13, G: 13, B: 13, A: 255},
-		OnStartup:        app.startup,
-		OnShutdown:       app.shutdown,
+		OnStartup: func(ctx context.Context) {
+			app.startup(ctx)
+			listenForFiles(app)
+		},
+		OnShutdown: app.shutdown,
 		Bind:             []interface{}{app},
 		Mac: &mac.Options{
 			// Handle "Open With" / double-click from Finder
