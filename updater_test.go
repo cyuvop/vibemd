@@ -1,6 +1,79 @@
 package main
 
-import "testing"
+import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+)
+
+// fakeReleaseServer spins up a local HTTP server that returns a fake
+// GitHub releases response. No network required.
+func fakeReleaseServer(t *testing.T, tagName, htmlURL string) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, `{"tag_name":%q,"html_url":%q}`, tagName, htmlURL)
+	}))
+}
+
+func TestCheckForUpdate_UpdateAvailable(t *testing.T) {
+	srv := fakeReleaseServer(t, "v2.0.0", "https://github.com/cyuvop/vibemd/releases/tag/v2.0.0")
+	defer srv.Close()
+
+	info := checkForUpdate(srv.URL, "1.1.0")
+
+	if !info.HasUpdate {
+		t.Fatal("expected HasUpdate=true")
+	}
+	if info.Version != "2.0.0" {
+		t.Errorf("Version = %q, want 2.0.0", info.Version)
+	}
+	if info.URL == "" {
+		t.Error("expected non-empty URL")
+	}
+}
+
+func TestCheckForUpdate_AlreadyCurrent(t *testing.T) {
+	srv := fakeReleaseServer(t, "v1.1.0", "https://github.com/cyuvop/vibemd/releases/tag/v1.1.0")
+	defer srv.Close()
+
+	info := checkForUpdate(srv.URL, "1.1.0")
+
+	if info.HasUpdate {
+		t.Error("expected HasUpdate=false when already on latest")
+	}
+}
+
+func TestCheckForUpdate_OlderRelease(t *testing.T) {
+	srv := fakeReleaseServer(t, "v1.0.0", "https://example.com")
+	defer srv.Close()
+
+	info := checkForUpdate(srv.URL, "1.1.0")
+
+	if info.HasUpdate {
+		t.Error("expected HasUpdate=false when release is older than current")
+	}
+}
+
+func TestCheckForUpdate_NetworkError(t *testing.T) {
+	// Point at a port nothing is listening on
+	info := checkForUpdate("http://127.0.0.1:1", "1.0.0")
+	if info.HasUpdate {
+		t.Error("expected HasUpdate=false on network error")
+	}
+}
+
+func TestCheckForUpdate_MalformedJSON(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `not json at all`)
+	}))
+	defer srv.Close()
+
+	info := checkForUpdate(srv.URL, "1.0.0")
+	if info.HasUpdate {
+		t.Error("expected HasUpdate=false on malformed JSON")
+	}
+}
 
 func TestIsNewerVersion(t *testing.T) {
 	cases := []struct {

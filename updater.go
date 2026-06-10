@@ -19,11 +19,19 @@ type githubRelease struct {
 	HTMLURL string `json:"html_url"`
 }
 
+const defaultUpdateURL = "https://api.github.com/repos/cyuvop/vibemd/releases/latest"
+
 // CheckForUpdate calls the GitHub releases API and returns update info.
 // Called from JS on startup; runs with a short timeout so it never hangs the UI.
 func (a *App) CheckForUpdate() UpdateInfo {
+	return checkForUpdate(defaultUpdateURL, AppVersion)
+}
+
+// checkForUpdate is the testable core — accepts the API URL and current
+// version so tests can inject a local server and arbitrary versions.
+func checkForUpdate(apiURL, currentVersion string) UpdateInfo {
 	client := &http.Client{Timeout: 8 * time.Second}
-	resp, err := client.Get("https://api.github.com/repos/cyuvop/vibemd/releases/latest")
+	resp, err := client.Get(apiURL)
 	if err != nil {
 		return UpdateInfo{}
 	}
@@ -35,7 +43,7 @@ func (a *App) CheckForUpdate() UpdateInfo {
 	}
 
 	latest := strings.TrimPrefix(release.TagName, "v")
-	if !isNewerVersion(latest, AppVersion) {
+	if !isNewerVersion(latest, currentVersion) {
 		return UpdateInfo{}
 	}
 
