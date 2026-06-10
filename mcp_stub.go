@@ -2,9 +2,7 @@ package main
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
-	"syscall"
 
 	"github.com/cyuvop/vibemd/mcp"
 )
@@ -42,18 +40,12 @@ func (h *headlessMCPState) OpenFile(path string) error {
 		return nil
 	}
 
-	// No running window — spawn one.
-	// Setsid puts the window in its own session so it survives if the
-	// MCP server process is later killed (e.g. Claude Code disconnects).
+	// No running window — spawn one (platform-specific detach in spawn_*.go).
 	exe, err := os.Executable()
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command(exe, abs)
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
-	cmd.Stdout = nil
-	cmd.Stderr = nil
-	return cmd.Start()
+	return spawnWindow(exe, abs)
 }
 
 func runMCPServer() {
