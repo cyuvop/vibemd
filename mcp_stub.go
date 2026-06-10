@@ -2,7 +2,9 @@ package main
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
+	"syscall"
 
 	"github.com/cyuvop/vibemd/mcp"
 )
@@ -19,8 +21,12 @@ func (h *headlessMCPState) GetTOC() []map[string]interface{}        { return h.a
 func (h *headlessMCPState) GetFilePath() string                     { return h.app.GetFilePath() }
 func (h *headlessMCPState) SetTheme(_ string)                       {} // no window in MCP mode
 
-// OpenFile in headless mode just sets the path — no Wails context exists
-// to emit events to, and get_current_file reads fresh from disk each call.
+// OpenFile opens the file in a visible vibemd window:
+//  1. If a window is already running, send the path via IPC socket.
+//  2. Otherwise launch a new vibemd window process with the file.
+//
+// In both cases the headless MCP state is also updated so subsequent
+// get_current_file / get_rendered_html calls return the right content.
 func (h *headlessMCPState) OpenFile(path string) error {
 	abs, err := filepath.Abs(path)
 	if err != nil {
@@ -30,7 +36,24 @@ func (h *headlessMCPState) OpenFile(path string) error {
 		return err
 	}
 	h.app.filePath = abs
-	return nil
+
+	// Try to hand off to an already-running vibemd window.
+	if tryDelegate(abs) {
+		return nil
+	}
+
+	// No running window — spawn one.
+	// Setsid puts the window in its own session so it survives if the
+	// MCP server process is later killed (e.g. Claude Code disconnects).
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	cmd := exec.Command(exe, abs)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+	return cmd.Start()
 }
 
 func runMCPServer() {
