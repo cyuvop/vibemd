@@ -9,3 +9,4 @@ build/darwin/Info.dev.plist
 *.iml
 .vscode/
 *.swift
+CLAUDE.md
