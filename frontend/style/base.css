@@ -245,6 +245,13 @@ body {
   margin: 0;
 }
 
+.help-version {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  color: var(--muted);
+  margin: 0;
+}
+
 .help-tagline {
   font-size: 11px;
   color: var(--muted);

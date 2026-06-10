@@ -142,6 +142,9 @@ func (a *App) GetRenderedHTML() string {
 // GetFilePath returns the currently open file path.
 func (a *App) GetFilePath() string { return a.filePath }
 
+// GetVersion returns the current app version string.
+func (a *App) GetVersion() string { return AppVersion }
+
 // Refresh re-reads and re-renders the current file on demand.
 func (a *App) Refresh() error {
 	if a.filePath == "" {

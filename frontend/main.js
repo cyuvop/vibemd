@@ -286,6 +286,9 @@ document.getElementById('search-close').addEventListener('click', closeSearch);
 // ── Help dialog ───────────────────────────────────
 document.getElementById('btn-help').addEventListener('click', () => {
   document.getElementById('help-overlay').removeAttribute('hidden');
+  window.go.main.App.GetVersion().then(v => {
+    document.getElementById('help-version').textContent = 'v' + v;
+  });
 });
 
 document.getElementById('btn-help-close').addEventListener('click', () => {
