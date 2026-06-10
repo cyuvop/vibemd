@@ -321,4 +321,16 @@ window.addEventListener('load', () => {
 
   applyLineNumbers(lineNumbersOn);
   window.go.main.App.Ready();
+
+  // Check for updates in the background — never blocks startup
+  window.go.main.App.CheckForUpdate().then(info => {
+    if (!info.hasUpdate) return;
+    const btn = document.getElementById('btn-update');
+    btn.title = `v${info.version} available — click to download`;
+    btn.textContent = `▲ v${info.version}`;
+    btn.removeAttribute('hidden');
+    btn.addEventListener('click', () => {
+      window.runtime.BrowserOpenURL(info.url);
+    });
+  }).catch(() => {}); // silently ignore network errors
 });

@@ -129,6 +129,15 @@ body {
   border-color: var(--accent);
 }
 
+.update-chip {
+  animation: update-pulse 2s ease-in-out infinite;
+}
+
+@keyframes update-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.55; }
+}
+
 /* ── Search bar ────────────────────────────────── */
 #search-bar {
   display: flex;
