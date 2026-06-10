@@ -306,6 +306,73 @@ document.getElementById('help-github').addEventListener('click', (e) => {
   window.runtime.BrowserOpenURL('https://github.com/cyuvop/vibemd');
 });
 
+// ── Copy helpers ──────────────────────────────────
+
+function flashCopied(btn) {
+  const orig = btn.textContent;
+  btn.textContent = '✓ COPIED';
+  btn.classList.add('copied');
+  setTimeout(() => {
+    btn.textContent = orig;
+    btn.classList.remove('copied');
+  }, 1500);
+}
+
+// Copy Rich: renders HTML into clipboard so Word/Confluence/Google Docs
+// receive formatted content (headings, tables, bold, lists, code).
+document.getElementById('btn-copy-rich').addEventListener('click', () => {
+  const src = document.getElementById('content');
+  if (!src || !src.children.length) return;
+
+  // Clone so we can strip vibemd-specific spans without touching the live DOM
+  const clone = src.cloneNode(true);
+  clone.querySelectorAll('.ln-num').forEach(s => s.remove());
+  // Unwrap search-match marks — keep text, drop highlight spans
+  clone.querySelectorAll('.search-match').forEach(m => {
+    m.replaceWith(document.createTextNode(m.textContent));
+  });
+
+  // Position offscreen, append, select, copy
+  clone.style.cssText = 'position:absolute;left:-99999px;top:0;';
+  document.body.appendChild(clone);
+
+  const range = document.createRange();
+  range.selectNodeContents(clone);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  document.execCommand('copy');
+  sel.removeAllRanges();
+  document.body.removeChild(clone);
+
+  flashCopied(document.getElementById('btn-copy-rich'));
+});
+
+// Copy MD: copies raw Markdown source — preserves all newlines.
+// Paste into Confluence Markdown editor, Notion, or any plain text field.
+document.getElementById('btn-copy-md').addEventListener('click', () => {
+  window.go.main.App.GetCurrentFile().then(info => {
+    const md = (info && info.rawMarkdown) ? info.rawMarkdown : '';
+    if (!md) return;
+
+    // Modern clipboard API with textarea fallback for older WebViews
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(md).then(() => {
+        flashCopied(document.getElementById('btn-copy-md'));
+      });
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = md;
+      ta.style.cssText = 'position:absolute;left:-99999px;top:0;';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      flashCopied(document.getElementById('btn-copy-md'));
+    }
+  });
+});
+
 // ── Manual refresh ────────────────────────────────
 document.getElementById('btn-refresh').addEventListener('click', () => {
   showBusy();

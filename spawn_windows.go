@@ -5,6 +5,6 @@ package main
 import "os/exec"
 
 // spawnWindow launches a new vibemd window process.
-func spawnWindow(exe, file string) error {
-	return exec.Command(exe, file).Start()
+func spawnWindow(exe string, args ...string) error {
+	return exec.Command(exe, args...).Start()
 }

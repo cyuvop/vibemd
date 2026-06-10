@@ -19,12 +19,12 @@ func (h *headlessMCPState) GetTOC() []map[string]interface{}        { return h.a
 func (h *headlessMCPState) GetFilePath() string                     { return h.app.GetFilePath() }
 func (h *headlessMCPState) SetTheme(_ string)                       {} // no window in MCP mode
 
-// OpenFile opens the file in a visible vibemd window:
-//  1. If a window is already running, send the path via IPC socket.
-//  2. Otherwise launch a new vibemd window process with the file.
+// OpenFile always opens the file in a NEW vibemd window so MCP clients
+// (Claude Code, Cursor, etc.) can open multiple docs side by side without
+// replacing an existing view. Use the CLI directly for single-window mode.
 //
-// In both cases the headless MCP state is also updated so subsequent
-// get_current_file / get_rendered_html calls return the right content.
+// The headless MCP state is also updated so get_current_file /
+// get_rendered_html return the right content after this call.
 func (h *headlessMCPState) OpenFile(path string) error {
 	abs, err := filepath.Abs(path)
 	if err != nil {
@@ -35,17 +35,13 @@ func (h *headlessMCPState) OpenFile(path string) error {
 	}
 	h.app.filePath = abs
 
-	// Try to hand off to an already-running vibemd window.
-	if tryDelegate(abs) {
-		return nil
-	}
-
-	// No running window — spawn one (platform-specific detach in spawn_*.go).
 	exe, err := os.Executable()
 	if err != nil {
 		return err
 	}
-	return spawnWindow(exe, abs)
+	// Always --new-window: MCP callers expect independent windows.
+	// Single-window mode is available via the CLI: vibemd file.md
+	return spawnWindow(exe, "--new-window", abs)
 }
 
 func runMCPServer() {

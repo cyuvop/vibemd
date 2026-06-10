@@ -126,7 +126,7 @@ func TestHeadlessMCPState_OpenFile_SetsFilePath(t *testing.T) {
 	}
 }
 
-func TestHeadlessMCPState_OpenFile_DelegatesToSocket(t *testing.T) {
+func TestHeadlessMCPState_OpenFile_AlwaysNewWindow(t *testing.T) {
 	f, err := os.CreateTemp("", "vibemd-test-*.md")
 	if err != nil {
 		t.Fatal(err)
@@ -134,7 +134,7 @@ func TestHeadlessMCPState_OpenFile_DelegatesToSocket(t *testing.T) {
 	f.Close()
 	defer os.Remove(f.Name())
 
-	// Start a mock vibemd window IPC listener
+	// Start a mock IPC listener — MCP should NOT send to it (always --new-window)
 	sock := sockPath()
 	os.Remove(sock)
 	ln, err := net.Listen("unix", sock)
@@ -144,7 +144,7 @@ func TestHeadlessMCPState_OpenFile_DelegatesToSocket(t *testing.T) {
 	defer ln.Close()
 	defer os.Remove(sock)
 
-	received := make(chan string, 1)
+	delegated := make(chan string, 1)
 	go func() {
 		conn, err := ln.Accept()
 		if err != nil {
@@ -153,21 +153,18 @@ func TestHeadlessMCPState_OpenFile_DelegatesToSocket(t *testing.T) {
 		defer conn.Close()
 		scanner := bufio.NewScanner(conn)
 		if scanner.Scan() {
-			received <- scanner.Text()
+			delegated <- scanner.Text()
 		}
 	}()
 
 	state := &headlessMCPState{app: NewApp()}
-	if err := state.OpenFile(f.Name()); err != nil {
-		t.Fatalf("OpenFile returned error: %v", err)
-	}
+	// OpenFile will try to spawn --new-window (fails in headless test env, that's ok)
+	_ = state.OpenFile(f.Name())
 
 	select {
-	case path := <-received:
-		if path != f.Name() {
-			t.Errorf("socket received %q, want %q", path, f.Name())
-		}
-	case <-time.After(2 * time.Second):
-		t.Error("timeout: expected file path on socket, got nothing")
+	case path := <-delegated:
+		t.Errorf("MCP OpenFile delegated to socket (%q) — should always spawn --new-window", path)
+	case <-time.After(300 * time.Millisecond):
+		// Good: no delegation happened
 	}
 }

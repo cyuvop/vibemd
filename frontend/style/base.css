@@ -133,6 +133,11 @@ body {
   animation: update-pulse 2s ease-in-out infinite;
 }
 
+.status-btn.copied {
+  color: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+
 @keyframes update-pulse {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.55; }
